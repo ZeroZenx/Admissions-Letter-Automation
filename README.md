@@ -14,6 +14,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Generate completed DOCX files while preserving the original DOCX package formatting.
 - Convert generated DOCX files to PDF through LibreOffice/`soffice` when available.
 - Optionally generate DOCX/PDF files automatically for valid rows immediately after upload.
+- Optionally send generated PDFs automatically after upload using Microsoft Graph and the authenticated mailbox.
 - Preview/download generated DOCX/PDF files and download a bulk ZIP.
 - Audit individual and bulk generated-letter downloads by generated-letter ID.
 - Microsoft Entra bearer-token verification for production API access.
@@ -118,7 +119,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 
 - Banner remains the source of truth. This app imports Banner data into a staging database only.
 - Admissions staff can review source-truth email status, sent date, generated file names, error message, processing flag, and selected template per applicant.
-- Email sending is intentionally not automatic after import.
+- Email sending can be run from the Email Queue or explicitly enabled on upload for a full import/generate/send batch.
 - Duplicate sends are blocked unless an authorized user supplies a resend reason.
 - Email send history is visible in the Email Queue without exposing stored email bodies.
 - Raw storage paths are never returned from download APIs; files are fetched by generated-letter id.

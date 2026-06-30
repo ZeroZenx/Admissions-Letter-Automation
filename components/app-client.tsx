@@ -219,6 +219,7 @@ export function AppClient() {
     setBusy(true);
     setMessage("");
     const autoGenerate = formData.get("autoGenerate") === "on";
+    const autoSend = formData.get("autoSend") === "on";
     const response = await authenticatedFetch("/api/import", { method: "POST", body: formData });
     const body = await readJson<{ validRows?: number; invalidRows?: number; validApplicantIds?: string[]; error?: string }>(response);
     if (!response.ok) {
@@ -229,16 +230,24 @@ export function AppClient() {
     }
 
     let importedMessage = `Imported ${body.validRows} valid rows. ${body.invalidRows} need review.`;
-    if (autoGenerate && body.validApplicantIds?.length) {
-      const generationResponse = await authenticatedFetch("/api/generate-bulk", {
+    if ((autoGenerate || autoSend) && body.validApplicantIds?.length) {
+      const bulkFetch = autoSend ? authenticatedGraphFetch : authenticatedFetch;
+      const generationResponse = await bulkFetch("/api/generate-bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicantIds: body.validApplicantIds })
+        body: JSON.stringify({
+          applicantIds: body.validApplicantIds,
+          sendEmail: autoSend,
+          subject: settings.email.defaultSubject,
+          body: settings.email.defaultBody
+        })
       });
-      const generationBody = await readJson<{ results?: Array<{ ok: boolean }>; error?: string }>(generationResponse);
+      const generationBody = await readJson<{ results?: Array<{ ok: boolean; generated?: boolean; emailed?: boolean }>; error?: string }>(generationResponse);
       const failures = generationBody.results?.filter((result) => !result.ok).length ?? 0;
+      const generated = generationBody.results?.filter((result) => result.generated).length ?? 0;
+      const emailed = generationBody.results?.filter((result) => result.emailed).length ?? 0;
       importedMessage = generationResponse.ok
-        ? `${importedMessage} Generated DOCX/PDF files for ${body.validApplicantIds.length - failures} records. ${failures} failed.`
+        ? `${importedMessage} Generated DOCX/PDF files for ${generated} records.${autoSend ? ` Sent ${emailed} emails.` : ""} ${failures} failed.`
         : `${importedMessage} Automatic generation failed: ${generationBody.error ?? "unknown error"}.`;
     }
     setBusy(false);
@@ -479,6 +488,10 @@ function UploadPage({ busy, onUpload }: { busy: boolean; onUpload: (formData: Fo
         <label className="check-row">
           <input name="autoGenerate" type="checkbox" defaultChecked />
           Generate DOCX/PDF files for valid rows after import
+        </label>
+        <label className="check-row">
+          <input name="autoSend" type="checkbox" />
+          Send generated PDFs by email after import
         </label>
         <button className="button" disabled={busy}>
           <Upload size={16} /> Import Admissions Worksheet

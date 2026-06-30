@@ -23,16 +23,29 @@ test("letter generation writes created file names back to applicant records", as
   assert.match(source, /SET word_file_name = \$1/);
   assert.match(source, /pdf_file_name = COALESCE\(\$2, pdf_file_name\)/);
   assert.match(source, /error_message = null/);
+  assert.match(source, /processed_by_flow = true/);
 });
 
 test("upload UI offers automatic document generation and displays operational columns", async () => {
   const source = await readFile("components/app-client.tsx", "utf8");
 
   assert.match(source, /name="autoGenerate"/);
+  assert.match(source, /name="autoSend"/);
   assert.match(source, /Generate DOCX\/PDF files for valid rows after import/);
+  assert.match(source, /Send generated PDFs by email after import/);
+  assert.match(source, /authenticatedGraphFetch/);
   assert.match(source, /SentDate/);
   assert.match(source, /WordFileName/);
   assert.match(source, /PDFFileName/);
   assert.match(source, /ErrorMessage/);
   assert.match(source, /ProcessedByFlow/);
+});
+
+test("bulk generation can send generated PDFs and persist row-level failures", async () => {
+  const source = await readFile("app/api/generate-bulk/route.ts", "utf8");
+
+  assert.match(source, /sendEmail: z\.boolean\(\)\.default\(false\)/);
+  assert.match(source, /x-graph-access-token/);
+  assert.match(source, /\/api\/send-email/);
+  assert.match(source, /UPDATE applicants SET error_message = \$1 WHERE id = \$2/);
 });

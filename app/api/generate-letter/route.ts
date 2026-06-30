@@ -68,7 +68,8 @@ export async function POST(request: Request) {
       `UPDATE applicants
           SET word_file_name = $1,
               pdf_file_name = COALESCE($2, pdf_file_name),
-              error_message = null
+              error_message = null,
+              processed_by_flow = true
         WHERE id = $3`,
       [fileBase, pdfFileName, body.applicantId]
     );

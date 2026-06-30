@@ -59,6 +59,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Upload a current Banner export and confirm invalid rows are clearly shown.
 - Confirm imported applicant records show `EmailStatus`, `SentDate`, `WordFileName`, `PDFFileName`, `ErrorMessage`, `ProcessedByFlow`, and `TemplateType`.
 - Confirm the upload automation option generates DOCX/PDF files for valid rows and writes file names back to applicant records.
+- Confirm the upload send option uses the authenticated Microsoft Graph mailbox, updates email status/sent dates, and records row-level errors.
 - If counselor ownership is used, set `applicants.counselor_user_id`; counselors can access unassigned applicants and applicants assigned to their user record, while Admin and Admissions Supervisor roles can access all records.
 - Generate sample letters for each `TemplateType`.
 - Open generated DOCX and PDF files and confirm logos, tables, headers, footers, signatures, and formatting are preserved.
