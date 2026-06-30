@@ -26,7 +26,8 @@ test("import automation preflight checks template readiness before generation", 
   assert.match(source, /missing_template/);
   assert.match(source, /inactive_template/);
   assert.match(source, /missing_mappings/);
-  assert.match(source, /jsonb_array_length\(t\.placeholders\)/);
+  assert.match(source, /missingPlaceholderNames/);
+  assert.match(source, /mapped\.has\(name\)/);
 });
 
 test("imports endpoint exposes upload review metadata without storage paths", async () => {
@@ -62,6 +63,7 @@ test("upload UI offers automatic document generation and displays operational co
   assert.match(source, /Rows Needing Review/);
   assert.match(source, /Automation preflight blocked/);
   assert.match(source, /blockedTemplates\.length/);
+  assert.match(source, /missingPlaceholderNames/);
   assert.match(source, /name="autoGenerate"/);
   assert.match(source, /name="autoSend"/);
   assert.match(source, /Generate DOCX\/PDF files for valid rows after import/);

@@ -108,12 +108,11 @@ async function buildAutomationPreflight(importId: string) {
   const templates = await query<{
     template_type: string;
     is_active: boolean;
-    placeholder_count: string;
-    mapping_count: string;
+    placeholders: Array<{ name?: string }>;
+    mapped_placeholders: string[];
   }>(
-    `SELECT t.template_type, t.is_active,
-            jsonb_array_length(t.placeholders) AS placeholder_count,
-            count(fm.id) AS mapping_count
+    `SELECT t.template_type, t.is_active, t.placeholders,
+            COALESCE(array_agg(fm.placeholder) FILTER (WHERE fm.id IS NOT NULL), ARRAY[]::text[]) AS mapped_placeholders
        FROM templates t
        LEFT JOIN field_mappings fm ON fm.template_id = t.id
       GROUP BY t.id
@@ -123,18 +122,21 @@ async function buildAutomationPreflight(importId: string) {
 
   return requiredTemplates.rows.map((required) => {
     const template = templateMap.get(required.template_type);
-    const placeholderCount = Number(template?.placeholder_count ?? 0);
-    const mappingCount = Number(template?.mapping_count ?? 0);
-    const missingMappings = Math.max(placeholderCount - mappingCount, 0);
-    const ready = Boolean(template?.is_active) && missingMappings === 0;
+    const placeholderNames = Array.isArray(template?.placeholders)
+      ? template.placeholders.map((placeholder) => placeholder.name).filter((name): name is string => Boolean(name))
+      : [];
+    const mapped = new Set(template?.mapped_placeholders ?? []);
+    const missingPlaceholderNames = placeholderNames.filter((name) => !mapped.has(name));
+    const ready = Boolean(template?.is_active) && missingPlaceholderNames.length === 0;
     return {
       templateType: required.template_type,
       applicantCount: Number(required.applicant_count),
-      status: !template ? "missing_template" : !template.is_active ? "inactive_template" : missingMappings ? "missing_mappings" : "ready",
+      status: !template ? "missing_template" : !template.is_active ? "inactive_template" : missingPlaceholderNames.length ? "missing_mappings" : "ready",
       ready,
-      placeholderCount,
-      mappingCount,
-      missingMappings
+      placeholderCount: placeholderNames.length,
+      mappingCount: mapped.size,
+      missingMappings: missingPlaceholderNames.length,
+      missingPlaceholderNames
     };
   });
 }

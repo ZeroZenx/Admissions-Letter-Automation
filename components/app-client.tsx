@@ -96,6 +96,7 @@ type TemplatePreflight = {
   placeholderCount: number;
   mappingCount: number;
   missingMappings: number;
+  missingPlaceholderNames: string[];
 };
 
 type EmailLog = {
@@ -265,7 +266,10 @@ export function AppClient() {
     let importedMessage = `Imported ${body.validRows} valid rows. ${body.invalidRows} need review.`;
     const blockedTemplates = body.preflight?.filter((item) => !item.ready) ?? [];
     if (blockedTemplates.length) {
-      importedMessage = `${importedMessage} Automation preflight blocked ${blockedTemplates.map((item) => `${item.templateType}: ${item.status}`).join(", ")}.`;
+      importedMessage = `${importedMessage} Automation preflight blocked ${blockedTemplates.map((item) => {
+        const missing = item.missingPlaceholderNames?.length ? ` (${item.missingPlaceholderNames.join(", ")})` : "";
+        return `${item.templateType}: ${item.status}${missing}`;
+      }).join(", ")}.`;
     } else if ((autoGenerate || autoSend) && body.validApplicantIds?.length) {
       const bulkFetch = autoSend ? authenticatedGraphFetch : authenticatedFetch;
       const generationResponse = await bulkFetch("/api/generate-bulk", {
