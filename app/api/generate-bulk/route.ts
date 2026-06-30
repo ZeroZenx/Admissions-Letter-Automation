@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
+import { ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
 
@@ -15,7 +17,8 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
+    const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
+    const dbUser = await ensureDbUser(user);
     const body = schema.parse(await request.json());
     const origin = new URL(request.url).origin;
     const authorization = request.headers.get("authorization");
@@ -25,6 +28,9 @@ export async function POST(request: Request) {
 
     if (body.sendEmail && (!body.subject || !body.body)) {
       return NextResponse.json({ error: "subject and body are required when sendEmail is true." }, { status: 400 });
+    }
+    if (body.sendEmail && !graphAccessToken) {
+      return NextResponse.json({ error: "Microsoft Graph token is required when sendEmail is true." }, { status: 401 });
     }
 
     for (const applicantId of body.applicantIds) {
@@ -73,6 +79,17 @@ export async function POST(request: Request) {
         emailResult
       });
     }
+
+    const generatedCount = results.filter((result) => result.generated).length;
+    const emailedCount = results.filter((result) => result.emailed).length;
+    const failedCount = results.filter((result) => !result.ok).length;
+    await audit("batch.generated", "generated_letters", {
+      requestedCount: body.applicantIds.length,
+      generatedCount,
+      emailedCount,
+      failedCount,
+      sendEmail: body.sendEmail
+    }, undefined, dbUser.id);
 
     return NextResponse.json({ results });
   } catch (error) {

@@ -19,6 +19,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Upload automation preflights required `TemplateType` templates and exact placeholder mappings before generating or sending.
 - Preview/download generated DOCX/PDF files and download a bulk ZIP.
 - Audit individual and bulk generated-letter downloads by generated-letter ID.
+- Audit batch automation summaries with requested, generated, emailed, and failed counts.
 - Microsoft Entra bearer-token verification for production API access.
 - Role-guarded API routes for Admin, Admissions Supervisor, Counselor, and Viewer access.
 - Microsoft Graph `/me/sendMail` route that sends from the authenticated counselor mailbox.

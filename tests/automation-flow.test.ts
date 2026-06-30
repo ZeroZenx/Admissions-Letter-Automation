@@ -81,6 +81,12 @@ test("bulk generation can send generated PDFs and persist row-level failures", a
 
   assert.match(source, /sendEmail: z\.boolean\(\)\.default\(false\)/);
   assert.match(source, /x-graph-access-token/);
+  assert.match(source, /Microsoft Graph token is required when sendEmail is true/);
   assert.match(source, /\/api\/send-email/);
   assert.match(source, /UPDATE applicants SET error_message = \$1 WHERE id = \$2/);
+  assert.match(source, /batch\.generated/);
+  assert.match(source, /requestedCount/);
+  assert.match(source, /generatedCount/);
+  assert.match(source, /emailedCount/);
+  assert.match(source, /failedCount/);
 });
