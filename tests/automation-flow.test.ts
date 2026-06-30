@@ -14,7 +14,17 @@ test("import route returns valid applicant ids for upload-time automation", asyn
 
   assert.match(source, /validApplicantIds/);
   assert.match(source, /if \(validateBannerRow\(row\)\.length\) continue/);
+  assert.match(source, /invalidRows\.length \? "review" : "imported"/);
   assert.match(source, /validation_errors = '\[\]'::jsonb/);
+});
+
+test("imports endpoint exposes upload review metadata without storage paths", async () => {
+  const source = await readFile("app/api/imports/route.ts", "utf8");
+
+  assert.match(source, /uploaded_file_name/);
+  assert.match(source, /total_rows, i\.valid_rows, i\.invalid_rows, i\.status, i\.errors/);
+  assert.match(source, /LEFT JOIN users/);
+  assert.doesNotMatch(source, /storage_key/);
 });
 
 test("letter generation writes created file names back to applicant records", async () => {
@@ -29,6 +39,8 @@ test("letter generation writes created file names back to applicant records", as
 test("upload UI offers automatic document generation and displays operational columns", async () => {
   const source = await readFile("components/app-client.tsx", "utf8");
 
+  assert.match(source, /Import Review/);
+  assert.match(source, /Rows Needing Review/);
   assert.match(source, /name="autoGenerate"/);
   assert.match(source, /name="autoSend"/);
   assert.match(source, /Generate DOCX\/PDF files for valid rows after import/);

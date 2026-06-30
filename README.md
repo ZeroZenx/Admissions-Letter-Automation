@@ -7,6 +7,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Upload Banner Excel export and read the `Admissions` worksheet.
 - Validate required Banner fields.
 - Show Banner operational fields including `EmailStatus`, `SentDate`, `WordFileName`, `PDFFileName`, `ErrorMessage`, `ProcessedByFlow`, and `TemplateType`.
+- Review import history with uploaded filename, worksheet, status, row counts, uploader, and row-level validation errors.
 - Store imports, applicants, templates, field mappings, generated letters, and audit logs in PostgreSQL.
 - Manage DOCX templates and detect placeholders from `«FIELD_NAME»`, `{{FIELD_NAME}}`, and Word content-control placeholder text.
 - Activate or deactivate managed templates without deleting historical generated-letter references.

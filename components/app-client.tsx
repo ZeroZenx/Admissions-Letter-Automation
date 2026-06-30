@@ -74,6 +74,20 @@ type AuditLog = {
   created_at: string;
 };
 
+type ImportRecord = {
+  id: string;
+  uploaded_file_name: string;
+  worksheet_name: string;
+  imported_at: string;
+  total_rows: number;
+  valid_rows: number;
+  invalid_rows: number;
+  status: "review" | "imported" | "failed";
+  errors: Array<{ rowNumber: number; studentId?: string; errors: string[] }>;
+  imported_by_name: string | null;
+  imported_by_email: string | null;
+};
+
 type EmailLog = {
   id: string;
   generated_letter_id: string | null;
@@ -141,6 +155,7 @@ export function AppClient() {
   const [generatedLetters, setGeneratedLetters] = useState<GeneratedLetter[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  const [imports, setImports] = useState<ImportRecord[]>([]);
   const [settings, setSettings] = useState<AppSettings>(fallbackSettings);
   const [selectedApplicants, setSelectedApplicants] = useState<string[]>([]);
   const [message, setMessage] = useState("");
@@ -166,14 +181,15 @@ export function AppClient() {
   const refresh = useCallback(async () => {
     if (auth.status !== "authenticated") return;
     const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
-    const [applicantRes, templateRes, generatedRes, emailLogRes, auditRes] = await Promise.all([
+    const [applicantRes, templateRes, generatedRes, emailLogRes, importRes, auditRes] = await Promise.all([
       authenticatedFetch(`/api/applicants?${query.toString()}`),
       authenticatedFetch("/api/templates"),
       authenticatedFetch("/api/generated-letters"),
       authenticatedFetch("/api/email-logs"),
+      authenticatedFetch("/api/imports"),
       authenticatedFetch("/api/audit-logs")
     ]);
-    const failed = [applicantRes, templateRes, generatedRes, emailLogRes, auditRes].find((response) => !response.ok);
+    const failed = [applicantRes, templateRes, generatedRes, emailLogRes, importRes, auditRes].find((response) => !response.ok);
     if (failed) {
       const body = await readJson<{ error?: string }>(failed);
       setMessage(body.error ?? "Some dashboard data could not be loaded. Check database and authentication settings.");
@@ -182,6 +198,7 @@ export function AppClient() {
     if (templateRes.ok) setTemplates((await templateRes.json()).templates);
     if (generatedRes.ok) setGeneratedLetters((await generatedRes.json()).generatedLetters);
     if (emailLogRes.ok) setEmailLogs((await emailLogRes.json()).emailLogs);
+    if (importRes.ok) setImports((await importRes.json()).imports);
     if (auditRes.ok) setAuditLogs((await auditRes.json()).auditLogs);
   }, [auth.status, filters]);
 
@@ -401,7 +418,7 @@ export function AppClient() {
           ) : null}
           {auth.status === "misconfigured" ? <p className="notice">{auth.error}</p> : null}
           {message ? <p className="notice">{message}</p> : null}
-          {canUseWorkspace && active === "dashboard" && <Dashboard metrics={metrics} applicants={applicants} templates={templates} />}
+          {canUseWorkspace && active === "dashboard" && <Dashboard metrics={metrics} applicants={applicants} templates={templates} imports={imports} />}
           {canUseWorkspace && active === "upload" && <UploadPage busy={busy} onUpload={uploadImport} />}
           {canUseWorkspace && active === "applicants" && (
             <ApplicantsPage
@@ -449,13 +466,24 @@ async function readJson<T>(response: Response): Promise<T> {
   }
 }
 
-function Dashboard({ metrics, applicants, templates }: { metrics: Record<string, number>; applicants: Applicant[]; templates: Template[] }) {
+function Dashboard({
+  metrics,
+  applicants,
+  templates,
+  imports
+}: {
+  metrics: Record<string, number>;
+  applicants: Applicant[];
+  templates: Template[];
+  imports: ImportRecord[];
+}) {
   return (
     <div className="grid">
       <div className="grid three">
         <Metric label="Imported Applicants" value={metrics.applicants} />
         <Metric label="Active Templates" value={metrics.readyTemplates} />
         <Metric label="Generated Letters" value={metrics.generated} />
+        <Metric label="Rows Needing Review" value={metrics.invalid} />
       </div>
       <div className="grid two">
         <Panel title="Recent Applicant Records">
@@ -473,7 +501,49 @@ function Dashboard({ metrics, applicants, templates }: { metrics: Record<string,
           ))}
         </Panel>
       </div>
+      <ImportHistory imports={imports.slice(0, 8)} />
     </div>
+  );
+}
+
+function ImportHistory({ imports }: { imports: ImportRecord[] }) {
+  return (
+    <Panel title="Import Review">
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Uploaded</th>
+              <th>File</th>
+              <th>Status</th>
+              <th>Rows</th>
+              <th>Imported By</th>
+              <th>Errors</th>
+            </tr>
+          </thead>
+          <tbody>
+            {imports.map((record) => (
+              <tr key={record.id}>
+                <td>{new Date(record.imported_at).toLocaleString()}</td>
+                <td>
+                  {record.uploaded_file_name}
+                  <div className="muted">{record.worksheet_name}</div>
+                </td>
+                <td>
+                  <span className={record.status === "imported" ? "status ok" : "status error"}>{record.status}</span>
+                </td>
+                <td>
+                  {record.valid_rows}/{record.total_rows} valid
+                  <div className="muted">{record.invalid_rows} need review</div>
+                </td>
+                <td>{record.imported_by_name ?? record.imported_by_email ?? ""}</td>
+                <td>{record.errors?.slice(0, 3).map((error) => `Row ${error.rowNumber}: ${error.errors.join(", ")}`).join(" | ")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
   );
 }
 
