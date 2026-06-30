@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { detectDocxPlaceholders } from "@/lib/docx-placeholders";
 import { handleApiError } from "@/lib/http";
+import { uploadLimits, validateFileSize } from "@/lib/request-limits";
 import { saveBuffer } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -40,6 +41,8 @@ export async function POST(request: Request) {
     if (!file.name.toLowerCase().endsWith(".docx")) {
       return NextResponse.json({ error: "Only DOCX template uploads are allowed." }, { status: 400 });
     }
+    const sizeError = validateFileSize(file, uploadLimits.docxBytes, "DOCX template");
+    if (sizeError) return sizeError;
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const placeholders = detectDocxPlaceholders(buffer);

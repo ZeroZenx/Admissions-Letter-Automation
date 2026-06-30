@@ -116,3 +116,5 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Duplicate sends are blocked unless an authorized user supplies a resend reason.
 - Raw storage paths are never returned from download APIs; files are fetched by generated-letter id.
 - Production Graph email sending requires a delegated Microsoft Graph bearer token with `Mail.Send`.
+- Upload and email attachment size limits are enforced server-side.
+- Security headers are applied by `middleware.ts`.

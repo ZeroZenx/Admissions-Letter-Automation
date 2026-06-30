@@ -4,15 +4,17 @@ import { HttpError, requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { sendGraphMail } from "@/lib/graph-mail";
 import { handleApiError } from "@/lib/http";
+import { uploadLimits, formatBytes } from "@/lib/request-limits";
+import { sanitizeEmailHtml } from "@/lib/sanitize";
 import { readStorageBuffer } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
 const schema = z.object({
   generatedLetterId: z.string().uuid(),
-  subject: z.string().min(1),
-  body: z.string().min(1),
-  resendReason: z.string().optional()
+  subject: z.string().trim().min(1).max(160),
+  body: z.string().trim().min(1).max(12000),
+  resendReason: z.string().trim().max(1000).optional()
 });
 
 export async function POST(request: Request) {
@@ -53,11 +55,18 @@ export async function POST(request: Request) {
     }
 
     const pdf = await readStorageBuffer(letter.pdf_storage_key);
+    if (pdf.byteLength > uploadLimits.pdfAttachmentBytes) {
+      return NextResponse.json(
+        { error: `Generated PDF exceeds the ${formatBytes(uploadLimits.pdfAttachmentBytes)} email attachment limit.` },
+        { status: 413 }
+      );
+    }
+    const sanitizedBody = sanitizeEmailHtml(body.body);
     await sendGraphMail({
       accessToken: graphAccessToken,
       recipient: letter.email,
       subject: body.subject,
-      body: body.body,
+      body: sanitizedBody,
       attachmentName: `${letter.student_id}-admissions-letter.pdf`,
       attachmentContent: pdf
     });
@@ -65,7 +74,7 @@ export async function POST(request: Request) {
     await query(
       `INSERT INTO email_logs (applicant_id, generated_letter_id, recipient, subject, body, status, sent_at, resend_reason)
        VALUES ($1, $2, $3, $4, $5, 'sent', now(), $6)`,
-      [letter.applicant_id, body.generatedLetterId, letter.email, body.subject, body.body, body.resendReason ?? null]
+      [letter.applicant_id, body.generatedLetterId, letter.email, body.subject, sanitizedBody, body.resendReason ?? null]
     );
     await query("UPDATE applicants SET email_status = 'Sent', sent_date = now() WHERE id = $1", [letter.applicant_id]);
 

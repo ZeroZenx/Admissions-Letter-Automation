@@ -34,6 +34,15 @@ Use this checklist before enabling COSTAATT staff access.
 - `NEXT_PUBLIC_GRAPH_SCOPES=User.Read Mail.Send`
 - `APP_STORAGE_DIR` points to persistent storage.
 
+## Security Controls
+
+- Security headers are applied by `middleware.ts`, including CSP, frame blocking, content-type sniffing protection, referrer policy, and permissions policy.
+- Banner Excel uploads are limited to 10 MB.
+- DOCX template uploads are limited to 15 MB.
+- PDF email attachments are limited to 10 MB.
+- Email HTML is sanitized before sending and logging.
+- Download APIs require authenticated access and do not expose raw storage paths.
+
 ## Data And Document Validation
 
 - Run `npm run db:setup` once per environment.

@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { withTransaction } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
 import { readAdmissionsWorksheet, rowToApplicantColumns, validateBannerRow } from "@/lib/import-excel";
+import { uploadLimits, validateFileSize } from "@/lib/request-limits";
 import { saveBuffer } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -19,6 +20,8 @@ export async function POST(request: Request) {
     if (!/\.(xlsx|xls)$/i.test(file.name)) {
       return NextResponse.json({ error: "Only Excel workbook uploads are allowed." }, { status: 400 });
     }
+    const sizeError = validateFileSize(file, uploadLimits.excelBytes, "Banner export");
+    if (sizeError) return sizeError;
 
     const buffer = Buffer.from(await file.arrayBuffer());
     await saveBuffer("imports", file.name, buffer);
