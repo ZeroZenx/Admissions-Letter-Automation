@@ -120,6 +120,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 
 - Banner remains the source of truth. This app imports Banner data into a staging database only.
 - Admissions staff can review source-truth email status, sent date, generated file names, error message, processing flag, and selected template per applicant.
+- Generation failures are written back to applicant error fields and generated-letter failure status.
 - Email sending can be run from the Email Queue or explicitly enabled on upload for a full import/generate/send batch.
 - Duplicate sends are blocked unless an authorized user supplies a resend reason.
 - Email send history is visible in the Email Queue without exposing stored email bodies.

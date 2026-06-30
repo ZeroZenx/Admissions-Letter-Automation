@@ -18,13 +18,22 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  let dbUserId: string | undefined;
+  let applicantId: string | undefined;
+  let letterId: string | undefined;
+  let failureStudentId: unknown;
+  let failureTemplateType: unknown;
   try {
     const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
     const dbUser = await ensureDbUser(user);
+    dbUserId = dbUser.id;
     const body = schema.parse(await request.json());
+    applicantId = body.applicantId;
     const applicantResult = await query<Record<string, unknown>>("SELECT * FROM applicants WHERE id = $1", [body.applicantId]);
     const applicant = applicantResult.rows[0];
     if (!applicant) return NextResponse.json({ error: "Applicant not found." }, { status: 404 });
+    failureStudentId = applicant.student_id;
+    failureTemplateType = applicant.template_type;
     enforceApplicantOwnership(user, dbUser.id, applicant);
 
     const templateResult = await query<Record<string, unknown>>(
@@ -53,6 +62,7 @@ export async function POST(request: Request) {
        RETURNING id`,
       [body.applicantId, template.id, docxStorageKey, dbUser.id]
     );
+    letterId = letterResult.rows[0].id;
 
     let pdfStorageKey: string | null = null;
     let pdfFileName: string | null = null;
@@ -61,7 +71,7 @@ export async function POST(request: Request) {
       pdfFileName = fileBase.replace(/\.docx$/i, ".pdf");
       await query("UPDATE generated_letters SET pdf_storage_key = $1, status = 'pdf_generated' WHERE id = $2", [
         pdfStorageKey,
-        letterResult.rows[0].id
+        letterId
       ]);
     }
     await query(
@@ -82,11 +92,23 @@ export async function POST(request: Request) {
     }, letterResult.rows[0].id, dbUser.id);
 
     return NextResponse.json({
-      generatedLetterId: letterResult.rows[0].id,
+      generatedLetterId: letterId,
       docxReady: true,
       pdfReady: Boolean(pdfStorageKey)
     });
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown letter generation failure";
+    if (applicantId) {
+      await query("UPDATE applicants SET error_message = $1, processed_by_flow = false WHERE id = $2", [errorMessage, applicantId]).catch(() => undefined);
+    }
+    if (letterId) {
+      await query("UPDATE generated_letters SET status = 'failed', error_message = $1 WHERE id = $2", [errorMessage, letterId]).catch(() => undefined);
+      await audit("letter.failed", "generated_letters", {
+        studentId: failureStudentId,
+        templateType: failureTemplateType,
+        error: errorMessage
+      }, letterId, dbUserId).catch(() => undefined);
+    }
     return handleApiError(error);
   }
 }

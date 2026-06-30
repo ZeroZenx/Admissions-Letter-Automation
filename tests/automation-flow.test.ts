@@ -36,6 +36,14 @@ test("letter generation writes created file names back to applicant records", as
   assert.match(source, /processed_by_flow = true/);
 });
 
+test("letter generation records applicant and generated-letter failures", async () => {
+  const source = await readFile("app/api/generate-letter/route.ts", "utf8");
+
+  assert.match(source, /UPDATE applicants SET error_message = \$1, processed_by_flow = false WHERE id = \$2/);
+  assert.match(source, /UPDATE generated_letters SET status = 'failed', error_message = \$1 WHERE id = \$2/);
+  assert.match(source, /letter\.failed/);
+});
+
 test("upload UI offers automatic document generation and displays operational columns", async () => {
   const source = await readFile("components/app-client.tsx", "utf8");
 
