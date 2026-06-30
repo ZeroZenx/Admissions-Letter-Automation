@@ -118,3 +118,4 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Production Graph email sending requires a delegated Microsoft Graph bearer token with `Mail.Send`.
 - Upload and email attachment size limits are enforced server-side.
 - Security headers are applied by `middleware.ts`.
+- Database integrity constraints and indexes are applied through `npm run db:setup`.

@@ -42,6 +42,8 @@ Use this checklist before enabling COSTAATT staff access.
 - PDF email attachments are limited to 10 MB.
 - Email HTML is sanitized before sending and logging.
 - Download APIs require authenticated access and do not expose raw storage paths.
+- Database constraints enforce known import, applicant email, generated letter, and email log statuses.
+- A partial unique index blocks duplicate original email sends while allowing authorized resends with a reason.
 
 ## Data And Document Validation
 

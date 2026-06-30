@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { audit } from "@/lib/audit";
 import { HttpError, requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { sendGraphMail } from "@/lib/graph-mail";
@@ -62,21 +63,45 @@ export async function POST(request: Request) {
       );
     }
     const sanitizedBody = sanitizeEmailHtml(body.body);
-    await sendGraphMail({
-      accessToken: graphAccessToken,
-      recipient: letter.email,
-      subject: body.subject,
-      body: sanitizedBody,
-      attachmentName: `${letter.student_id}-admissions-letter.pdf`,
-      attachmentContent: pdf
-    });
-
-    await query(
+    const emailLog = await query<{ id: string }>(
       `INSERT INTO email_logs (applicant_id, generated_letter_id, recipient, subject, body, status, sent_at, resend_reason)
-       VALUES ($1, $2, $3, $4, $5, 'sent', now(), $6)`,
+       VALUES ($1, $2, $3, $4, $5, 'pending', null, $6)
+       RETURNING id`,
       [letter.applicant_id, body.generatedLetterId, letter.email, body.subject, sanitizedBody, body.resendReason ?? null]
     );
-    await query("UPDATE applicants SET email_status = 'Sent', sent_date = now() WHERE id = $1", [letter.applicant_id]);
+
+    await query("UPDATE applicants SET email_status = 'Sending' WHERE id = $1", [letter.applicant_id]);
+
+    try {
+      await sendGraphMail({
+        accessToken: graphAccessToken,
+        recipient: letter.email,
+        subject: body.subject,
+        body: sanitizedBody,
+        attachmentName: `${letter.student_id}-admissions-letter.pdf`,
+        attachmentContent: pdf
+      });
+
+      await query("UPDATE email_logs SET status = 'sent', sent_at = now() WHERE id = $1", [emailLog.rows[0].id]);
+      await query("UPDATE applicants SET email_status = 'Sent', sent_date = now() WHERE id = $1", [letter.applicant_id]);
+      await audit("email.sent", "email_logs", {
+        studentId: letter.student_id,
+        recipient: letter.email,
+        generatedLetterId: body.generatedLetterId,
+        resend: Boolean(body.resendReason)
+      }, emailLog.rows[0].id);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown Graph send failure";
+      await query("UPDATE email_logs SET status = 'failed', error_message = $1 WHERE id = $2", [errorMessage, emailLog.rows[0].id]);
+      await query("UPDATE applicants SET email_status = 'Failed', error_message = $1 WHERE id = $2", [errorMessage, letter.applicant_id]);
+      await audit("email.failed", "email_logs", {
+        studentId: letter.student_id,
+        recipient: letter.email,
+        generatedLetterId: body.generatedLetterId,
+        error: errorMessage
+      }, emailLog.rows[0].id);
+      throw error;
+    }
 
     return NextResponse.json({ sent: true });
   } catch (error) {
