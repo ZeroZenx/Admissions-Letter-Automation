@@ -15,3 +15,11 @@ test("database setup script includes operational integrity migration", async () 
   assert.match(packageJson.scripts["db:migrate"], /001_initial_schema\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /002_operational_integrity\.sql/);
 });
+
+test("migration runner wraps each SQL file in a transaction", async () => {
+  const script = await readFile("scripts/migrate.mjs", "utf8");
+
+  assert.match(script, /await client\.query\("BEGIN"\)/);
+  assert.match(script, /await client\.query\("COMMIT"\)/);
+  assert.match(script, /await client\.query\("ROLLBACK"\)/);
+});

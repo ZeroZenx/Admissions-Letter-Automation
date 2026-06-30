@@ -11,11 +11,13 @@ let failed = false;
 for (const check of checks) {
   const url = new URL(check.path, baseUrl);
   const response = await fetch(url);
-  const body = check.json ? await response.json() : await response.text();
+  const bodyText = await response.text();
+  const body = check.json ? JSON.parse(bodyText) : bodyText;
 
   if (response.status !== check.expectedStatus) {
     failed = true;
     console.error(`${check.name}: expected ${check.expectedStatus}, got ${response.status}`);
+    console.error(bodyText.slice(0, 1000));
     continue;
   }
 
@@ -28,6 +30,9 @@ for (const check of checks) {
   if (check.json && !body.ok) {
     failed = true;
     console.error(`${check.name}: health check is not ok`, JSON.stringify(body));
+    if (body.checks) {
+      console.error(JSON.stringify(body.checks, null, 2));
+    }
     continue;
   }
 

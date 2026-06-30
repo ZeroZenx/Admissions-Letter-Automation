@@ -21,11 +21,16 @@ export function buildLetterValues(
   });
 
   for (const mapping of mappings) {
-    const rawValue = raw[mapping.banner_field] ?? applicant[toSnake(mapping.banner_field)];
+    const rawValue = values[normalizePlaceholder(mapping.banner_field)] ?? resolveMappedValue(raw, applicant, mapping.banner_field);
     values[normalizePlaceholder(mapping.placeholder)] = stringify(rawValue || mapping.fallback_value || "");
   }
 
   return values;
+}
+
+function resolveMappedValue(raw: Record<string, unknown>, applicant: Record<string, unknown>, bannerField: string) {
+  const normalizedField = normalizePlaceholder(bannerField);
+  return raw[bannerField] ?? raw[normalizedField] ?? applicant[toSnake(bannerField)] ?? applicant[toSnake(normalizedField)];
 }
 
 function stringify(value: unknown) {

@@ -21,7 +21,14 @@ try {
     const absolutePath = path.resolve(file);
     const sql = await readFile(absolutePath, "utf8");
     console.log(`Applying ${file}`);
-    await client.query(sql);
+    await client.query("BEGIN");
+    try {
+      await client.query(sql);
+      await client.query("COMMIT");
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    }
   }
   console.log("Done.");
 } finally {
