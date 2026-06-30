@@ -11,7 +11,8 @@
     "test": "tsx --test tests/*.test.ts",
     "db:migrate": "node scripts/migrate.mjs db/migrations/001_initial_schema.sql",
     "db:seed": "node scripts/migrate.mjs db/seeds/001_template_types.sql",
-    "db:setup": "npm run db:migrate && npm run db:seed"
+    "db:setup": "npm run db:migrate && npm run db:seed",
+    "smoke": "node scripts/smoke.mjs"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.15.0",

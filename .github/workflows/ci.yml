@@ -8,11 +8,26 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: costaatt_admissions
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d costaatt_admissions"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     env:
       AUTH_MODE: development
       NEXT_PUBLIC_AUTH_MODE: development
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/costaatt_admissions
       APP_STORAGE_DIR: ./storage
+      SOFFICE_PATH: /usr/bin/libreoffice
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,6 +41,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install LibreOffice
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libreoffice-writer
+
       - name: Lint
         run: npm run lint
 
@@ -35,8 +53,24 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Setup database
+        run: npm run db:setup
+
       - name: Build
         run: npm run build
+
+      - name: Start app
+        run: npm run start > /tmp/admissions-app.log 2>&1 &
+
+      - name: Smoke test
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/api/health > /tmp/health.json; then
+              break
+            fi
+            sleep 2
+          done
+          npm run smoke
 
       - name: Audit production dependencies
         run: npm audit --omit=dev

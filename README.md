@@ -53,6 +53,21 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## Docker Setup
+
+For a production-like local stack with PostgreSQL:
+
+```bash
+docker compose up --build
+```
+
+In another terminal, apply the database schema:
+
+```bash
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/costaatt_admissions npm run db:setup
+npm run smoke
+```
+
 ## Validation
 
 Run the full local gate before pushing changes:
@@ -89,6 +104,10 @@ For production:
 6. Set `AUTH_MODE=entra`, `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_API_AUDIENCE`, `NEXT_PUBLIC_ENTRA_TENANT_ID`, `NEXT_PUBLIC_ENTRA_CLIENT_ID`, `NEXT_PUBLIC_ENTRA_API_SCOPE`, and `NEXT_PUBLIC_GRAPH_SCOPES`.
 
 The browser acquires one access token for this app's API and a separate delegated Graph token for email sending. The server validates the API token and uses the Graph token only for `/me/sendMail`.
+
+## Production Checklist
+
+See [docs/production-readiness.md](docs/production-readiness.md) for the deployment checklist, Entra configuration, document validation steps, release gate, and rollback notes.
 
 ## Notes
 
