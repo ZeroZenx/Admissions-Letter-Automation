@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthEnv, getDbEnv, getPdfEnv, getStorageEnv } from "@/lib/env";
+import { getAuthEnv, getClientAuthEnv, getDbEnv, getPdfEnv, getStorageEnv } from "@/lib/env";
 import { query } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -15,6 +15,16 @@ export async function GET() {
     };
   } catch (error) {
     checks.auth = { ok: false, detail: errorMessage(error) };
+  }
+
+  try {
+    const clientAuth = getClientAuthEnv();
+    checks.clientAuth = {
+      ok: true,
+      detail: `mode=${clientAuth.NEXT_PUBLIC_AUTH_MODE}; graphScopes=${clientAuth.graphScopes.join(" ")}`
+    };
+  } catch (error) {
+    checks.clientAuth = { ok: false, detail: errorMessage(error) };
   }
 
   try {

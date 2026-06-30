@@ -19,6 +19,15 @@ const pdfEnvSchema = z.object({
   SOFFICE_PATH: z.string().optional()
 });
 
+const clientAuthEnvSchema = z.object({
+  NEXT_PUBLIC_AUTH_MODE: z.enum(["development", "entra"]).default(process.env.NODE_ENV === "production" ? "entra" : "development"),
+  NEXT_PUBLIC_ENTRA_TENANT_ID: z.string().optional(),
+  NEXT_PUBLIC_ENTRA_CLIENT_ID: z.string().optional(),
+  NEXT_PUBLIC_ENTRA_REDIRECT_URI: z.string().optional(),
+  NEXT_PUBLIC_ENTRA_API_SCOPE: z.string().optional(),
+  NEXT_PUBLIC_GRAPH_SCOPES: z.string().default("User.Read Mail.Send")
+});
+
 const serverEnvSchema = authEnvSchema.merge(dbEnvSchema).merge(storageEnvSchema).merge(pdfEnvSchema);
 
 export function getAuthEnv() {
@@ -39,6 +48,21 @@ export function getStorageEnv() {
 
 export function getPdfEnv() {
   return pdfEnvSchema.parse(process.env);
+}
+
+export function getClientAuthEnv() {
+  const env = clientAuthEnvSchema.parse(process.env);
+  const graphScopes = env.NEXT_PUBLIC_GRAPH_SCOPES.split(/\s+/).filter(Boolean);
+  if (env.NEXT_PUBLIC_AUTH_MODE === "entra") {
+    const missing = [
+      env.NEXT_PUBLIC_ENTRA_TENANT_ID ? "" : "NEXT_PUBLIC_ENTRA_TENANT_ID",
+      env.NEXT_PUBLIC_ENTRA_CLIENT_ID ? "" : "NEXT_PUBLIC_ENTRA_CLIENT_ID",
+      env.NEXT_PUBLIC_ENTRA_API_SCOPE ? "" : "NEXT_PUBLIC_ENTRA_API_SCOPE",
+      graphScopes.includes("Mail.Send") ? "" : "Mail.Send graph scope"
+    ].filter(Boolean);
+    if (missing.length) throw new Error(`Client Entra configuration is incomplete: ${missing.join(", ")}.`);
+  }
+  return { ...env, graphScopes };
 }
 
 export function getServerEnv() {

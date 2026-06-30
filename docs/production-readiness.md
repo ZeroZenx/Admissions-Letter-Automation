@@ -9,6 +9,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Persistent storage is configured for generated DOCX/PDF files.
 - LibreOffice is installed and `SOFFICE_PATH` points to the headless executable, or a replacement converter is implemented behind `lib/pdf-converter.ts`.
 - `/api/health` returns `ok: true`.
+- `/api/health` includes a passing `clientAuth` check with `Mail.Send` in the reported Graph scopes.
 
 ## Microsoft Entra
 
