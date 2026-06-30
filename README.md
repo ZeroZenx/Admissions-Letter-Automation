@@ -15,6 +15,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Microsoft Entra bearer-token verification for production API access.
 - Role-guarded API routes for Admin, Admissions Supervisor, Counselor, and Viewer access.
 - Microsoft Graph `/me/sendMail` route that sends from the authenticated counselor mailbox.
+- Recent email activity view with recipient, status, resend reason, sent time, and errors.
 - Duplicate-send prevention unless a resend reason is supplied.
 
 ## Setup
@@ -114,6 +115,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Banner remains the source of truth. This app imports Banner data into a staging database only.
 - Email sending is intentionally not automatic after import.
 - Duplicate sends are blocked unless an authorized user supplies a resend reason.
+- Email send history is visible in the Email Queue without exposing stored email bodies.
 - Raw storage paths are never returned from download APIs; files are fetched by generated-letter id.
 - Production Graph email sending requires a delegated Microsoft Graph bearer token with `Mail.Send`.
 - Upload and email attachment size limits are enforced server-side.

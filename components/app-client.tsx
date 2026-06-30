@@ -69,6 +69,23 @@ type AuditLog = {
   created_at: string;
 };
 
+type EmailLog = {
+  id: string;
+  generated_letter_id: string | null;
+  applicant_id: string;
+  recipient: string;
+  subject: string;
+  status: "pending" | "sent" | "failed";
+  sent_at: string | null;
+  resend_reason: string | null;
+  error_message: string | null;
+  created_at: string;
+  student_id: string;
+  first_name: string;
+  last_name: string;
+  template_type: string;
+};
+
 type AppSettings = {
   email: {
     defaultSubject: string;
@@ -118,6 +135,7 @@ export function AppClient() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [generatedLetters, setGeneratedLetters] = useState<GeneratedLetter[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [settings, setSettings] = useState<AppSettings>(fallbackSettings);
   const [selectedApplicants, setSelectedApplicants] = useState<string[]>([]);
   const [message, setMessage] = useState("");
@@ -143,13 +161,14 @@ export function AppClient() {
   const refresh = useCallback(async () => {
     if (auth.status !== "authenticated") return;
     const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
-    const [applicantRes, templateRes, generatedRes, auditRes] = await Promise.all([
+    const [applicantRes, templateRes, generatedRes, emailLogRes, auditRes] = await Promise.all([
       authenticatedFetch(`/api/applicants?${query.toString()}`),
       authenticatedFetch("/api/templates"),
       authenticatedFetch("/api/generated-letters"),
+      authenticatedFetch("/api/email-logs"),
       authenticatedFetch("/api/audit-logs")
     ]);
-    const failed = [applicantRes, templateRes, generatedRes, auditRes].find((response) => !response.ok);
+    const failed = [applicantRes, templateRes, generatedRes, emailLogRes, auditRes].find((response) => !response.ok);
     if (failed) {
       const body = await readJson<{ error?: string }>(failed);
       setMessage(body.error ?? "Some dashboard data could not be loaded. Check database and authentication settings.");
@@ -157,6 +176,7 @@ export function AppClient() {
     if (applicantRes.ok) setApplicants((await applicantRes.json()).applicants);
     if (templateRes.ok) setTemplates((await templateRes.json()).templates);
     if (generatedRes.ok) setGeneratedLetters((await generatedRes.json()).generatedLetters);
+    if (emailLogRes.ok) setEmailLogs((await emailLogRes.json()).emailLogs);
     if (auditRes.ok) setAuditLogs((await auditRes.json()).auditLogs);
   }, [auth.status, filters]);
 
@@ -337,7 +357,7 @@ export function AppClient() {
             />
           )}
           {canUseWorkspace && active === "email" && (
-            <EmailQueue generatedLetters={generatedLetters} onDownload={downloadLetter} settings={settings} />
+            <EmailQueue generatedLetters={generatedLetters} emailLogs={emailLogs} onDownload={downloadLetter} settings={settings} onRefresh={refresh} />
           )}
           {canUseWorkspace && active === "audit" && <AuditPage auditLogs={auditLogs} />}
           {canUseWorkspace && active === "settings" && (
@@ -559,12 +579,16 @@ function GeneratePage({
 
 function EmailQueue({
   generatedLetters,
+  emailLogs,
   onDownload,
-  settings
+  settings,
+  onRefresh
 }: {
   generatedLetters: GeneratedLetter[];
+  emailLogs: EmailLog[];
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
   settings: AppSettings;
+  onRefresh: () => Promise<void>;
 }) {
   const [generatedLetterId, setGeneratedLetterId] = useState(generatedLetters[0]?.id ?? "");
   const [subject, setSubject] = useState(settings.email.defaultSubject);
@@ -598,6 +622,7 @@ function EmailQueue({
     const result = await readJson<{ error?: string; sent?: boolean }>(response);
     setBusy(false);
     setMessage(response.ok && result.sent ? "Email sent and logged." : result.error ?? "Email could not be sent.");
+    if (response.ok) await onRefresh();
   }
 
   return (
@@ -638,8 +663,46 @@ function EmailQueue({
           <Mail size={16} /> Send Selected PDF
         </button>
       </Panel>
+      <EmailLogTable emailLogs={emailLogs} />
       <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} />
     </div>
+  );
+}
+
+function EmailLogTable({ emailLogs }: { emailLogs: EmailLog[] }) {
+  return (
+    <Panel title="Recent Email Activity">
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>StudentID</th>
+              <th>Recipient</th>
+              <th>Template</th>
+              <th>Status</th>
+              <th>Resend</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody>
+            {emailLogs.map((log) => (
+              <tr key={log.id}>
+                <td>{new Date(log.sent_at ?? log.created_at).toLocaleString()}</td>
+                <td>{log.student_id}</td>
+                <td>{log.recipient}</td>
+                <td>{log.template_type}</td>
+                <td>
+                  <span className={log.status === "sent" ? "status ok" : "status"}>{log.status}</span>
+                </td>
+                <td>{log.resend_reason ?? ""}</td>
+                <td>{log.error_message ?? ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
   );
 }
 

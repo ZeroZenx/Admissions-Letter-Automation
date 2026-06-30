@@ -42,6 +42,7 @@ Use this checklist before enabling COSTAATT staff access.
 - DOCX template uploads are limited to 15 MB.
 - PDF email attachments are limited to 10 MB.
 - Email HTML is sanitized before sending and logging.
+- Email Queue exposes recent send history, status, resend reasons, and errors without returning stored email bodies.
 - Download APIs require authenticated access and do not expose raw storage paths.
 - Database constraints enforce known import, applicant email, generated letter, and email log statuses.
 - A partial unique index blocks duplicate original email sends while allowing authorized resends with a reason.
@@ -58,6 +59,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Open generated DOCX and PDF files and confirm logos, tables, headers, footers, signatures, and formatting are preserved.
 - Send a test email from a counselor account to a controlled test mailbox.
 - Confirm duplicate-send prevention blocks a second send without a resend reason.
+- Confirm the Email Queue recent activity table records sent, failed, and resent attempts for the correct counselor scope.
 
 ## Release Gate
 
