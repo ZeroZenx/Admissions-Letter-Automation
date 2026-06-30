@@ -37,13 +37,12 @@ createdb costaatt_admissions
 cp .env.example .env.local
 ```
 
-For local development, keep `AUTH_MODE=development`. Production deployments should use `AUTH_MODE=entra` and set `ENTRA_TENANT_ID` and `ENTRA_CLIENT_ID`.
+For local development, keep `AUTH_MODE=development`. Production deployments should use `AUTH_MODE=entra` and set `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_API_AUDIENCE`, and the matching `NEXT_PUBLIC_ENTRA_*` values.
 
 4. Run migrations and seed data:
 
 ```bash
-psql "$DATABASE_URL" -f db/migrations/001_initial_schema.sql
-psql "$DATABASE_URL" -f db/seeds/001_template_types.sql
+npm run db:setup
 ```
 
 5. Start the app:
@@ -67,6 +66,29 @@ npm audit --omit=dev
 ```
 
 GitHub Actions runs the same gate on pushes and pull requests.
+
+## Health Check
+
+After deployment, verify runtime dependencies:
+
+```bash
+curl /api/health
+```
+
+The health check reports authentication mode/configuration, database connectivity, storage configuration, and PDF conversion configuration without exposing secrets.
+
+## Microsoft Entra Setup
+
+For production:
+
+1. Register an app in Microsoft Entra ID.
+2. Add the deployed site URL and `/login` URL as single-page application redirect URIs.
+3. Expose an API scope such as `api://<client-id>/access_as_user`.
+4. Assign app roles named `Admin`, `Admissions Supervisor`, `Counselor`, and `Viewer`.
+5. Grant delegated Microsoft Graph permissions for `User.Read` and `Mail.Send`.
+6. Set `AUTH_MODE=entra`, `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_API_AUDIENCE`, `NEXT_PUBLIC_ENTRA_TENANT_ID`, `NEXT_PUBLIC_ENTRA_CLIENT_ID`, `NEXT_PUBLIC_ENTRA_API_SCOPE`, and `NEXT_PUBLIC_GRAPH_SCOPES`.
+
+The browser acquires one access token for this app's API and a separate delegated Graph token for email sending. The server validates the API token and uses the Graph token only for `/me/sendMail`.
 
 ## Notes
 

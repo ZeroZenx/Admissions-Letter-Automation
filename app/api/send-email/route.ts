@@ -18,8 +18,9 @@ const schema = z.object({
 export async function POST(request: Request) {
   try {
     const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
-    if (!user.accessToken) {
-      throw new HttpError(401, "Microsoft Graph email sending requires the authenticated user's bearer token.");
+    const graphAccessToken = request.headers.get("x-graph-access-token") ?? user.accessToken;
+    if (!graphAccessToken) {
+      throw new HttpError(401, "Microsoft Graph email sending requires a delegated Graph bearer token.");
     }
 
     const body = schema.parse(await request.json());
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
 
     const pdf = await readStorageBuffer(letter.pdf_storage_key);
     await sendGraphMail({
-      accessToken: user.accessToken,
+      accessToken: graphAccessToken,
       recipient: letter.email,
       subject: body.subject,
       body: body.body,

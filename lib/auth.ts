@@ -1,7 +1,7 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getServerEnv } from "@/lib/env";
+import { getAuthEnv } from "@/lib/env";
 
 export const roles = ["Admin", "Admissions Supervisor", "Counselor", "Viewer"] as const;
 export type UserRole = (typeof roles)[number];
@@ -26,7 +26,7 @@ export class HttpError extends Error {
 }
 
 export async function requireAuth(request: Request, allowedRoles: UserRole[] = [...roles]) {
-  const env = getServerEnv();
+  const env = getAuthEnv();
   if (env.AUTH_MODE === "development") {
     const role = roleSchema.catch("Admin").parse(request.headers.get("x-dev-role") ?? "Admin");
     if (!allowedRoles.includes(role)) {
@@ -47,11 +47,18 @@ export async function requireAuth(request: Request, allowedRoles: UserRole[] = [
   }
 
   const accessToken = authorization.slice("Bearer ".length);
-  const issuer = `https://login.microsoftonline.com/${env.ENTRA_TENANT_ID}/v2.0`;
+  const tenantId = env.ENTRA_TENANT_ID;
+  const clientId = env.ENTRA_CLIENT_ID;
+  if (!tenantId || !clientId) {
+    throw new HttpError(500, "Microsoft Entra authentication is not configured.");
+  }
+
+  const issuer = `https://login.microsoftonline.com/${tenantId}/v2.0`;
   const jwks = createRemoteJWKSet(new URL(`${issuer}/discovery/v2.0/keys`));
+  const audience = env.ENTRA_API_AUDIENCE ?? [clientId, `api://${clientId}`];
   const verified = await jwtVerify(accessToken, jwks, {
     issuer,
-    audience: env.ENTRA_CLIENT_ID
+    audience
   });
 
   const claims = verified.payload;

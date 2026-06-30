@@ -1,5 +1,5 @@
 import { Pool, type QueryResultRow } from "pg";
-import { getServerEnv } from "@/lib/env";
+import { getDbEnv } from "@/lib/env";
 
 declare global {
   var costaattPool: Pool | undefined;
@@ -8,7 +8,7 @@ declare global {
 function getPool() {
   if (!global.costaattPool) {
     global.costaattPool = new Pool({
-      connectionString: getServerEnv().DATABASE_URL
+      connectionString: getDbEnv().DATABASE_URL
     });
   }
   return global.costaattPool;

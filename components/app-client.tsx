@@ -14,6 +14,13 @@ import {
   Upload
 } from "lucide-react";
 import { bannerFields } from "@/lib/banner-fields";
+import {
+  authenticatedFetch,
+  authenticatedGraphFetch,
+  getClientAuthState,
+  logout,
+  type ClientAuthState
+} from "@/lib/client-auth";
 
 type Applicant = {
   id: string;
@@ -85,6 +92,7 @@ const sections = [
 const filterKeys: Array<keyof ApplicantFilters> = ["templateType", "admissionStatus", "emailStatus", "campus", "program"];
 
 export function AppClient() {
+  const [auth, setAuth] = useState<ClientAuthState>({ mode: "development", status: "loading" });
   const [active, setActive] = useState<(typeof sections)[number]["id"]>("dashboard");
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -101,19 +109,35 @@ export function AppClient() {
     program: ""
   });
 
+  useEffect(() => {
+    void getClientAuthState().then(setAuth).catch((error) => {
+      setAuth({
+        mode: "entra",
+        status: "misconfigured",
+        error: error instanceof Error ? error.message : "Authentication failed."
+      });
+    });
+  }, []);
+
   const refresh = useCallback(async () => {
+    if (auth.status !== "authenticated") return;
     const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
     const [applicantRes, templateRes, generatedRes, auditRes] = await Promise.all([
-      fetch(`/api/applicants?${query.toString()}`),
-      fetch("/api/templates"),
-      fetch("/api/generated-letters"),
-      fetch("/api/audit-logs")
+      authenticatedFetch(`/api/applicants?${query.toString()}`),
+      authenticatedFetch("/api/templates"),
+      authenticatedFetch("/api/generated-letters"),
+      authenticatedFetch("/api/audit-logs")
     ]);
+    const failed = [applicantRes, templateRes, generatedRes, auditRes].find((response) => !response.ok);
+    if (failed) {
+      const body = await readJson<{ error?: string }>(failed);
+      setMessage(body.error ?? "Some dashboard data could not be loaded. Check database and authentication settings.");
+    }
     if (applicantRes.ok) setApplicants((await applicantRes.json()).applicants);
     if (templateRes.ok) setTemplates((await templateRes.json()).templates);
     if (generatedRes.ok) setGeneratedLetters((await generatedRes.json()).generatedLetters);
     if (auditRes.ok) setAuditLogs((await auditRes.json()).auditLogs);
-  }, [filters]);
+  }, [auth.status, filters]);
 
   useEffect(() => {
     void refresh();
@@ -133,20 +157,20 @@ export function AppClient() {
   async function uploadImport(formData: FormData) {
     setBusy(true);
     setMessage("");
-    const response = await fetch("/api/import", { method: "POST", body: formData });
-    const body = await response.json();
+    const response = await authenticatedFetch("/api/import", { method: "POST", body: formData });
+    const body = await readJson<{ validRows?: number; invalidRows?: number; error?: string }>(response);
     setBusy(false);
-    setMessage(response.ok ? `Imported ${body.validRows} valid rows. ${body.invalidRows} need review.` : body.error);
+    setMessage(response.ok ? `Imported ${body.validRows} valid rows. ${body.invalidRows} need review.` : body.error ?? "Import failed.");
     await refresh();
   }
 
   async function uploadTemplate(formData: FormData) {
     setBusy(true);
     setMessage("");
-    const response = await fetch("/api/templates", { method: "POST", body: formData });
-    const body = await response.json();
+    const response = await authenticatedFetch("/api/templates", { method: "POST", body: formData });
+    const body = await readJson<{ placeholders?: unknown[]; error?: string }>(response);
     setBusy(false);
-    setMessage(response.ok ? `Template saved. Detected ${body.placeholders.length} placeholders.` : body.error);
+    setMessage(response.ok ? `Template saved. Detected ${body.placeholders?.length ?? 0} placeholders.` : body.error ?? "Template upload failed.");
     await refresh();
   }
 
@@ -156,7 +180,7 @@ export function AppClient() {
       bannerField: String(formData.get(placeholder.name) || placeholder.name),
       fallbackValue: String(formData.get(`${placeholder.name}:fallback`) || "")
     }));
-    const response = await fetch("/api/field-mappings", {
+    const response = await authenticatedFetch("/api/field-mappings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ templateId: template.id, mappings })
@@ -167,19 +191,38 @@ export function AppClient() {
 
   async function generateSelected() {
     setBusy(true);
-    const response = await fetch("/api/generate-bulk", {
+    const response = await authenticatedFetch("/api/generate-bulk", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ applicantIds: selectedApplicants })
     });
-    const body = await response.json();
+    const body = await readJson<{ results?: Array<{ ok: boolean }>; error?: string }>(response);
     const failures = body.results?.filter((result: { ok: boolean }) => !result.ok).length ?? 0;
     setBusy(false);
-    setMessage(`Generation finished for ${selectedApplicants.length} applicants. ${failures} failed.`);
+    setMessage(
+      response.ok ? `Generation finished for ${selectedApplicants.length} applicants. ${failures} failed.` : body.error ?? "Generation failed."
+    );
     await refresh();
   }
 
+  async function downloadLetter(letterId: string, type: "docx" | "pdf") {
+    const response = await authenticatedFetch(`/api/download/${letterId}?type=${type}`);
+    if (!response.ok) {
+      const body = await readJson<{ error?: string }>(response);
+      setMessage(body.error ?? `Could not download ${type.toUpperCase()} file.`);
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${letterId}.${type}`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   const title = sections.find((section) => section.id === active)?.label ?? "Dashboard";
+  const canUseWorkspace = auth.status === "authenticated";
 
   return (
     <div className="app-shell">
@@ -218,12 +261,24 @@ export function AppClient() {
           <span className="status ok">
             <ShieldCheck size={14} /> Review required
           </span>
+          {auth.status === "authenticated" ? (
+            <button className="button secondary" onClick={() => void logout()}>
+              Sign out
+            </button>
+          ) : null}
         </header>
         <div className="content">
+          {auth.status === "loading" ? <p className="notice">Checking authentication...</p> : null}
+          {auth.status === "unauthenticated" ? (
+            <p className="notice">
+              You need to sign in before accessing admissions records. Open <a href="/login">Login</a>.
+            </p>
+          ) : null}
+          {auth.status === "misconfigured" ? <p className="notice">{auth.error}</p> : null}
           {message ? <p className="notice">{message}</p> : null}
-          {active === "dashboard" && <Dashboard metrics={metrics} applicants={applicants} templates={templates} />}
-          {active === "upload" && <UploadPage busy={busy} onUpload={uploadImport} />}
-          {active === "applicants" && (
+          {canUseWorkspace && active === "dashboard" && <Dashboard metrics={metrics} applicants={applicants} templates={templates} />}
+          {canUseWorkspace && active === "upload" && <UploadPage busy={busy} onUpload={uploadImport} />}
+          {canUseWorkspace && active === "applicants" && (
             <ApplicantsPage
               applicants={applicants}
               filters={filters}
@@ -232,9 +287,9 @@ export function AppClient() {
               onSelected={setSelectedApplicants}
             />
           )}
-          {active === "templates" && <TemplatesPage busy={busy} templates={templates} onUpload={uploadTemplate} />}
-          {active === "mappings" && <MappingsPage templates={templates} onSave={saveMappings} />}
-          {active === "generate" && (
+          {canUseWorkspace && active === "templates" && <TemplatesPage busy={busy} templates={templates} onUpload={uploadTemplate} />}
+          {canUseWorkspace && active === "mappings" && <MappingsPage templates={templates} onSave={saveMappings} />}
+          {canUseWorkspace && active === "generate" && (
             <GeneratePage
               applicants={applicants}
               selected={selectedApplicants}
@@ -242,15 +297,24 @@ export function AppClient() {
               busy={busy}
               onGenerate={generateSelected}
               generatedLetters={generatedLetters}
+              onDownload={downloadLetter}
             />
           )}
-          {active === "email" && <EmailQueue generatedLetters={generatedLetters} />}
-          {active === "audit" && <AuditPage auditLogs={auditLogs} />}
-          {active === "settings" && <SettingsPage />}
+          {canUseWorkspace && active === "email" && <EmailQueue generatedLetters={generatedLetters} onDownload={downloadLetter} />}
+          {canUseWorkspace && active === "audit" && <AuditPage auditLogs={auditLogs} />}
+          {canUseWorkspace && active === "settings" && <SettingsPage />}
         </div>
       </main>
     </div>
   );
+}
+
+async function readJson<T>(response: Response): Promise<T> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return {} as T;
+  }
 }
 
 function Dashboard({ metrics, applicants, templates }: { metrics: Record<string, number>; applicants: Applicant[]; templates: Template[] }) {
@@ -428,7 +492,8 @@ function GeneratePage({
   onSelected,
   busy,
   onGenerate,
-  generatedLetters
+  generatedLetters,
+  onDownload
 }: {
   applicants: Applicant[];
   selected: string[];
@@ -436,6 +501,7 @@ function GeneratePage({
   busy: boolean;
   onGenerate: () => void;
   generatedLetters: GeneratedLetter[];
+  onDownload: (letterId: string, type: "docx" | "pdf") => void;
 }) {
   return (
     <div className="grid">
@@ -446,17 +512,83 @@ function GeneratePage({
         </button>
         <RecordsTable applicants={applicants} selected={selected} onSelected={onSelected} compact />
       </Panel>
-      <GeneratedTable generatedLetters={generatedLetters} />
+      <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} />
     </div>
   );
 }
 
-function EmailQueue({ generatedLetters }: { generatedLetters: GeneratedLetter[] }) {
+function EmailQueue({
+  generatedLetters,
+  onDownload
+}: {
+  generatedLetters: GeneratedLetter[];
+  onDownload: (letterId: string, type: "docx" | "pdf") => void;
+}) {
+  const [generatedLetterId, setGeneratedLetterId] = useState(generatedLetters[0]?.id ?? "");
+  const [subject, setSubject] = useState("Your COSTAATT admissions letter");
+  const [body, setBody] = useState("Dear applicant,<br><br>Please find your COSTAATT admissions letter attached.");
+  const [resendReason, setResendReason] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function sendEmail() {
+    setBusy(true);
+    setMessage("");
+    const response = await authenticatedGraphFetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        generatedLetterId,
+        subject,
+        body,
+        resendReason: resendReason || undefined
+      })
+    });
+    const result = await readJson<{ error?: string; sent?: boolean }>(response);
+    setBusy(false);
+    setMessage(response.ok && result.sent ? "Email sent and logged." : result.error ?? "Email could not be sent.");
+  }
+
   return (
-    <Panel title="Email Queue">
-      <p className="notice">Microsoft Graph sending is milestone 2. The queue is read-only until Entra ID and Mail.Send are configured.</p>
-      <GeneratedTable generatedLetters={generatedLetters} />
-    </Panel>
+    <div className="grid">
+      <Panel title="Email Queue">
+        <p className="notice">Email uses Microsoft Graph and sends from the authenticated counselor mailbox.</p>
+        {message ? <p className="notice">{message}</p> : null}
+        <div className="grid two">
+          <div className="field">
+            <label>Generated letter</label>
+            <select value={generatedLetterId} onChange={(event) => setGeneratedLetterId(event.target.value)}>
+              {generatedLetters.map((letter) => (
+                <option key={letter.id} value={letter.id}>
+                  {letter.student_id} · {letter.first_name} {letter.last_name} · {letter.template_type}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label>Subject</label>
+            <input value={subject} onChange={(event) => setSubject(event.target.value)} />
+          </div>
+          <div className="field">
+            <label>Body</label>
+            <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={5} />
+          </div>
+          <div className="field">
+            <label>Resend reason</label>
+            <textarea
+              value={resendReason}
+              onChange={(event) => setResendReason(event.target.value)}
+              rows={5}
+              placeholder="Required only when sending a letter that was already sent"
+            />
+          </div>
+        </div>
+        <button className="button" disabled={busy || !generatedLetterId} onClick={sendEmail}>
+          <Mail size={16} /> Send Selected PDF
+        </button>
+      </Panel>
+      <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} />
+    </div>
   );
 }
 
@@ -577,7 +709,13 @@ function RecordsTable({
   );
 }
 
-function GeneratedTable({ generatedLetters }: { generatedLetters: GeneratedLetter[] }) {
+function GeneratedTable({
+  generatedLetters,
+  onDownload
+}: {
+  generatedLetters: GeneratedLetter[];
+  onDownload: (letterId: string, type: "docx" | "pdf") => void;
+}) {
   return (
     <Panel title="Generated PDFs">
       <div className="table-wrap">
@@ -606,13 +744,13 @@ function GeneratedTable({ generatedLetters }: { generatedLetters: GeneratedLette
                 </td>
                 <td>{new Date(letter.generated_at).toLocaleString()}</td>
                 <td>
-                  <a className="button secondary" href={`/api/download/${letter.id}?type=docx`}>
+                  <button className="button secondary" onClick={() => onDownload(letter.id, "docx")}>
                     DOCX
-                  </a>{" "}
+                  </button>{" "}
                   {letter.pdf_ready ? (
-                    <a className="button secondary" href={`/api/download/${letter.id}?type=pdf`}>
+                    <button className="button secondary" onClick={() => onDownload(letter.id, "pdf")}>
                       PDF
-                    </a>
+                    </button>
                   ) : null}
                 </td>
               </tr>

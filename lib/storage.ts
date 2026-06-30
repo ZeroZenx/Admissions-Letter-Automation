@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { getServerEnv } from "@/lib/env";
+import { getStorageEnv } from "@/lib/env";
 
 function storageRoot() {
-  return path.resolve(getServerEnv().APP_STORAGE_DIR);
+  return path.resolve(getStorageEnv().APP_STORAGE_DIR);
 }
 
 export function storagePath(key: string) {

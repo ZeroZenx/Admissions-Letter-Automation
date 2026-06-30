@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AUTH_MODE: development
+      NEXT_PUBLIC_AUTH_MODE: development
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/costaatt_admissions
       APP_STORAGE_DIR: ./storage
     steps:
