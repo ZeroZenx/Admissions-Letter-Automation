@@ -14,6 +14,7 @@ test("database setup script includes operational integrity migration", async () 
 
   assert.match(packageJson.scripts["db:migrate"], /001_initial_schema\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /002_operational_integrity\.sql/);
+  assert.match(packageJson.scripts["db:migrate"], /003_app_settings\.sql/);
 });
 
 test("migration runner wraps each SQL file in a transaction", async () => {

@@ -69,6 +69,16 @@ type AuditLog = {
   created_at: string;
 };
 
+type AppSettings = {
+  email: {
+    defaultSubject: string;
+    defaultBody: string;
+  };
+  pdf: {
+    converter: "libreoffice";
+  };
+};
+
 type ApplicantFilters = {
   templateType: string;
   admissionStatus: string;
@@ -91,6 +101,16 @@ const sections = [
 
 const filterKeys: Array<keyof ApplicantFilters> = ["templateType", "admissionStatus", "emailStatus", "campus", "program"];
 
+const fallbackSettings: AppSettings = {
+  email: {
+    defaultSubject: "Your COSTAATT admissions letter",
+    defaultBody: "Dear applicant,<br><br>Please find your COSTAATT admissions letter attached."
+  },
+  pdf: {
+    converter: "libreoffice"
+  }
+};
+
 export function AppClient() {
   const [auth, setAuth] = useState<ClientAuthState>({ mode: "development", status: "loading" });
   const [active, setActive] = useState<(typeof sections)[number]["id"]>("dashboard");
@@ -98,6 +118,7 @@ export function AppClient() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [generatedLetters, setGeneratedLetters] = useState<GeneratedLetter[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [settings, setSettings] = useState<AppSettings>(fallbackSettings);
   const [selectedApplicants, setSelectedApplicants] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -139,9 +160,24 @@ export function AppClient() {
     if (auditRes.ok) setAuditLogs((await auditRes.json()).auditLogs);
   }, [auth.status, filters]);
 
+  const refreshSettings = useCallback(async () => {
+    if (auth.status !== "authenticated") return;
+    const response = await authenticatedFetch("/api/settings");
+    const body = await readJson<{ settings?: AppSettings; error?: string }>(response);
+    if (response.ok && body.settings) {
+      setSettings(body.settings);
+    } else if (!response.ok) {
+      setMessage(body.error ?? "Settings could not be loaded.");
+    }
+  }, [auth.status]);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    void refreshSettings();
+  }, [refreshSettings]);
 
   const metrics = useMemo(() => {
     const readyTemplates = templates.filter((template) => template.is_active).length;
@@ -300,9 +336,13 @@ export function AppClient() {
               onDownload={downloadLetter}
             />
           )}
-          {canUseWorkspace && active === "email" && <EmailQueue generatedLetters={generatedLetters} onDownload={downloadLetter} />}
+          {canUseWorkspace && active === "email" && (
+            <EmailQueue generatedLetters={generatedLetters} onDownload={downloadLetter} settings={settings} />
+          )}
           {canUseWorkspace && active === "audit" && <AuditPage auditLogs={auditLogs} />}
-          {canUseWorkspace && active === "settings" && <SettingsPage />}
+          {canUseWorkspace && active === "settings" && (
+            <SettingsPage settings={settings} onSettings={setSettings} onRefresh={refreshSettings} />
+          )}
         </div>
       </main>
     </div>
@@ -519,17 +559,28 @@ function GeneratePage({
 
 function EmailQueue({
   generatedLetters,
-  onDownload
+  onDownload,
+  settings
 }: {
   generatedLetters: GeneratedLetter[];
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
+  settings: AppSettings;
 }) {
   const [generatedLetterId, setGeneratedLetterId] = useState(generatedLetters[0]?.id ?? "");
-  const [subject, setSubject] = useState("Your COSTAATT admissions letter");
-  const [body, setBody] = useState("Dear applicant,<br><br>Please find your COSTAATT admissions letter attached.");
+  const [subject, setSubject] = useState(settings.email.defaultSubject);
+  const [body, setBody] = useState(settings.email.defaultBody);
   const [resendReason, setResendReason] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setSubject(settings.email.defaultSubject);
+    setBody(settings.email.defaultBody);
+  }, [settings.email.defaultBody, settings.email.defaultSubject]);
+
+  useEffect(() => {
+    if (!generatedLetterId && generatedLetters[0]?.id) setGeneratedLetterId(generatedLetters[0].id);
+  }, [generatedLetterId, generatedLetters]);
 
   async function sendEmail() {
     setBusy(true);
@@ -623,19 +674,86 @@ function AuditPage({ auditLogs }: { auditLogs: AuditLog[] }) {
   );
 }
 
-function SettingsPage() {
+function SettingsPage({
+  settings,
+  onSettings,
+  onRefresh
+}: {
+  settings: AppSettings;
+  onSettings: (settings: AppSettings) => void;
+  onRefresh: () => Promise<void>;
+}) {
+  const [draft, setDraft] = useState(settings);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setDraft(settings);
+  }, [settings]);
+
+  async function saveSettings() {
+    setBusy(true);
+    setMessage("");
+    const response = await authenticatedFetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(draft)
+    });
+    const body = await readJson<{ settings?: AppSettings; error?: string }>(response);
+    setBusy(false);
+    if (response.ok && body.settings) {
+      onSettings(body.settings);
+      setMessage("Settings saved.");
+      await onRefresh();
+    } else {
+      setMessage(body.error ?? "Settings could not be saved.");
+    }
+  }
+
   return (
     <Panel title="Settings">
+      {message ? <p className="notice">{message}</p> : null}
       <div className="grid two">
         <div>
           <h3>Authentication</h3>
-          <p className="muted">Microsoft Entra ID variables are read from the environment. Role enforcement is schema-ready for milestone 3.</p>
+          <p className="muted">Microsoft Entra ID variables are read from the environment. Role enforcement is active for protected APIs.</p>
         </div>
         <div>
           <h3>PDF Conversion</h3>
-          <p className="muted">Set SOFFICE_PATH to LibreOffice headless conversion for local development.</p>
+          <p className="muted">Configured converter: {draft.pdf.converter}. Set SOFFICE_PATH for LibreOffice headless conversion.</p>
         </div>
       </div>
+      <div className="grid two" style={{ marginTop: 18 }}>
+        <div className="field">
+          <label>Default email subject</label>
+          <input
+            value={draft.email.defaultSubject}
+            onChange={(event) =>
+              setDraft({ ...draft, email: { ...draft.email, defaultSubject: event.target.value } })
+            }
+          />
+        </div>
+        <div className="field">
+          <label>PDF converter</label>
+          <select
+            value={draft.pdf.converter}
+            onChange={(event) => setDraft({ ...draft, pdf: { converter: event.target.value as "libreoffice" } })}
+          >
+            <option value="libreoffice">LibreOffice</option>
+          </select>
+        </div>
+        <div className="field">
+          <label>Default email body</label>
+          <textarea
+            value={draft.email.defaultBody}
+            onChange={(event) => setDraft({ ...draft, email: { ...draft.email, defaultBody: event.target.value } })}
+            rows={6}
+          />
+        </div>
+      </div>
+      <button className="button" disabled={busy} onClick={saveSettings}>
+        Save Settings
+      </button>
     </Panel>
   );
 }

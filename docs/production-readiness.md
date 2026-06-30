@@ -33,6 +33,7 @@ Use this checklist before enabling COSTAATT staff access.
 - `NEXT_PUBLIC_ENTRA_API_SCOPE` matches the exposed API scope.
 - `NEXT_PUBLIC_GRAPH_SCOPES=User.Read Mail.Send`
 - `APP_STORAGE_DIR` points to persistent storage.
+- Configure default email subject/body in the Settings page after deployment.
 
 ## Security Controls
 
@@ -44,6 +45,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Download APIs require authenticated access and do not expose raw storage paths.
 - Database constraints enforce known import, applicant email, generated letter, and email log statuses.
 - A partial unique index blocks duplicate original email sends while allowing authorized resends with a reason.
+- Settings changes are restricted to Admin and Admissions Supervisor roles and are audited.
 
 ## Data And Document Validation
 

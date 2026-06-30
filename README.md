@@ -120,3 +120,4 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Security headers are applied by `middleware.ts`.
 - Database integrity constraints and indexes are applied through `npm run db:setup`.
 - Counselor ownership is enforced when `applicants.counselor_user_id` is configured.
+- Default email content and PDF converter mode are persisted in `app_settings`.
