@@ -6,6 +6,7 @@ test("download ZIP route rejects partial archives and audits bulk downloads", as
   const source = await readFile("app/api/download-zip/route.ts", "utf8");
 
   assert.match(source, /generatedLetterIds: z\.array\(z\.string\(\)\.uuid\(\)\)\.min\(1\)/);
+  assert.match(source, /requireAuth\(request, \["Admin", "Admissions Supervisor", "Counselor"\]\)/);
   assert.match(source, /One or more generated letters were not found/);
   assert.match(source, /enforceApplicantOwnership/);
   assert.match(source, /letters\.downloaded_zip/);
@@ -15,6 +16,7 @@ test("download ZIP route rejects partial archives and audits bulk downloads", as
 test("individual download route audits downloads without returning storage paths", async () => {
   const source = await readFile("app/api/download/[id]/route.ts", "utf8");
 
+  assert.match(source, /requireAuth\(request, \["Admin", "Admissions Supervisor", "Counselor"\]\)/);
   assert.match(source, /readStorageBuffer\(key\)/);
   assert.match(source, /letter\.downloaded/);
   assert.match(source, /fileType: type/);

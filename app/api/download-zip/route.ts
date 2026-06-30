@@ -17,7 +17,7 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const user = await requireAuth(request);
+    const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
     const dbUser = await ensureDbUser(user);
     const body = schema.parse(await request.json());
     const result = await query<{
