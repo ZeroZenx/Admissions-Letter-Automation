@@ -18,6 +18,17 @@ test("individual download route audits downloads without returning storage paths
   assert.match(source, /readStorageBuffer\(key\)/);
   assert.match(source, /letter\.downloaded/);
   assert.match(source, /fileType: type/);
+  assert.match(source, /disposition = url\.searchParams\.get\("disposition"\) === "inline" \? "inline" : "attachment"/);
+  assert.match(source, /"Content-Disposition": `\$\{disposition\}; filename="\$\{id\}\.\$\{type\}"/);
   assert.match(source, /return new NextResponse\(buffer/);
   assert.doesNotMatch(source, /NextResponse\.json\([^)]*storage_key/s);
+});
+
+test("generated letters table supports authenticated PDF preview", async () => {
+  const source = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(source, /async function previewLetter\(letterId: string\)/);
+  assert.match(source, /authenticatedFetch\(`\/api\/download\/\$\{letterId\}\?type=pdf&disposition=inline`\)/);
+  assert.match(source, /<Eye size=\{16\} \/> Preview/);
+  assert.match(source, /onPreview\(letter\.id\)/);
 });

@@ -15,6 +15,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const url = new URL(request.url);
     const type = url.searchParams.get("type") === "docx" ? "docx" : "pdf";
+    const disposition = url.searchParams.get("disposition") === "inline" ? "inline" : "attachment";
     const column = type === "docx" ? "docx_storage_key" : "pdf_storage_key";
     const result = await query<Record<string, string>>(
       `SELECT gl.${column}, a.counselor_user_id, a.student_id
@@ -35,13 +36,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     await audit("letter.downloaded", "generated_letters", {
       generatedLetterId: id,
       fileType: type,
+      disposition,
       studentId: result.rows[0]?.student_id
     }, id, dbUser.id);
 
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": contentType,
-        "Content-Disposition": `attachment; filename="${id}.${type}"`
+        "Content-Disposition": `${disposition}; filename="${id}.${type}"`
       }
     });
   } catch (error) {

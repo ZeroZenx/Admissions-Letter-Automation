@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ClipboardList,
   Database,
+  Eye,
   FileArchive,
   FileText,
   LayoutDashboard,
@@ -366,6 +367,24 @@ export function AppClient() {
     URL.revokeObjectURL(url);
   }
 
+  async function previewLetter(letterId: string) {
+    const previewWindow = window.open("about:blank", "_blank");
+    const response = await authenticatedFetch(`/api/download/${letterId}?type=pdf&disposition=inline`);
+    if (!response.ok) {
+      previewWindow?.close();
+      const body = await readJson<{ error?: string }>(response);
+      setMessage(body.error ?? "Could not preview PDF file.");
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    if (previewWindow) {
+      previewWindow.location.href = url;
+    } else {
+      window.location.href = url;
+    }
+  }
+
   async function downloadZip(letterIds: string[]) {
     const response = await authenticatedFetch("/api/download-zip", {
       method: "POST",
@@ -465,11 +484,12 @@ export function AppClient() {
               onGenerate={generateSelected}
               generatedLetters={generatedLetters}
               onDownload={downloadLetter}
+              onPreview={previewLetter}
               onDownloadZip={downloadZip}
             />
           )}
           {canUseWorkspace && active === "email" && (
-            <EmailQueue generatedLetters={generatedLetters} emailLogs={emailLogs} onDownload={downloadLetter} onDownloadZip={downloadZip} settings={settings} onRefresh={refresh} />
+            <EmailQueue generatedLetters={generatedLetters} emailLogs={emailLogs} onDownload={downloadLetter} onPreview={previewLetter} onDownloadZip={downloadZip} settings={settings} onRefresh={refresh} />
           )}
           {canUseWorkspace && active === "audit" && <AuditPage auditLogs={auditLogs} />}
           {canUseWorkspace && active === "settings" && (
@@ -737,6 +757,7 @@ function GeneratePage({
   onGenerate,
   generatedLetters,
   onDownload,
+  onPreview,
   onDownloadZip
 }: {
   applicants: Applicant[];
@@ -746,6 +767,7 @@ function GeneratePage({
   onGenerate: () => void;
   generatedLetters: GeneratedLetter[];
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
+  onPreview: (letterId: string) => void;
   onDownloadZip: (letterIds: string[]) => void;
 }) {
   return (
@@ -757,7 +779,7 @@ function GeneratePage({
         </button>
         <RecordsTable applicants={applicants} selected={selected} onSelected={onSelected} compact />
       </Panel>
-      <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} onDownloadZip={onDownloadZip} />
+      <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} onPreview={onPreview} onDownloadZip={onDownloadZip} />
     </div>
   );
 }
@@ -766,6 +788,7 @@ function EmailQueue({
   generatedLetters,
   emailLogs,
   onDownload,
+  onPreview,
   onDownloadZip,
   settings,
   onRefresh
@@ -773,6 +796,7 @@ function EmailQueue({
   generatedLetters: GeneratedLetter[];
   emailLogs: EmailLog[];
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
+  onPreview: (letterId: string) => void;
   onDownloadZip: (letterIds: string[]) => void;
   settings: AppSettings;
   onRefresh: () => Promise<void>;
@@ -851,7 +875,7 @@ function EmailQueue({
         </button>
       </Panel>
       <EmailLogTable emailLogs={emailLogs} />
-      <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} onDownloadZip={onDownloadZip} />
+      <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} onPreview={onPreview} onDownloadZip={onDownloadZip} />
     </div>
   );
 }
@@ -1096,10 +1120,12 @@ function RecordsTable({
 function GeneratedTable({
   generatedLetters,
   onDownload,
+  onPreview,
   onDownloadZip
 }: {
   generatedLetters: GeneratedLetter[];
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
+  onPreview: (letterId: string) => void;
   onDownloadZip: (letterIds: string[]) => void;
 }) {
   const downloadableIds = generatedLetters.map((letter) => letter.id);
@@ -1139,9 +1165,14 @@ function GeneratedTable({
                     DOCX
                   </button>{" "}
                   {letter.pdf_ready ? (
-                    <button className="button secondary" onClick={() => onDownload(letter.id, "pdf")}>
-                      PDF
-                    </button>
+                    <>
+                      <button className="button secondary" onClick={() => onPreview(letter.id)}>
+                        <Eye size={16} /> Preview
+                      </button>{" "}
+                      <button className="button secondary" onClick={() => onDownload(letter.id, "pdf")}>
+                        PDF
+                      </button>
+                    </>
                   ) : null}
                 </td>
               </tr>
