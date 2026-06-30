@@ -51,6 +51,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Upload each production DOCX template and verify detected placeholders.
 - Map every detected placeholder to a Banner field or fallback.
 - Upload a current Banner export and confirm invalid rows are clearly shown.
+- If counselor ownership is used, set `applicants.counselor_user_id`; counselors can access unassigned applicants and applicants assigned to their user record, while Admin and Admissions Supervisor roles can access all records.
 - Generate sample letters for each `TemplateType`.
 - Open generated DOCX and PDF files and confirm logos, tables, headers, footers, signatures, and formatting are preserved.
 - Send a test email from a counselor account to a controlled test mailbox.

@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
 import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
-import { withTransaction } from "@/lib/db";
+import { query, withTransaction } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
 import { readAdmissionsWorksheet, rowToApplicantColumns, validateBannerRow } from "@/lib/import-excel";
 import { uploadLimits, validateFileSize } from "@/lib/request-limits";
 import { saveBuffer } from "@/lib/storage";
+import { ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
   try {
-    await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
+    const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
+    const dbUser = await ensureDbUser(user);
     const formData = await request.formData();
     const file = formData.get("file");
     if (!(file instanceof File)) {
@@ -56,12 +58,14 @@ export async function POST(request: Request) {
       return { id: importId };
     });
 
+    await query("UPDATE imports SET imported_by = $1 WHERE id = $2", [dbUser.id, importRecord.id]);
+
     await audit("import.created", "imports", {
       uploadedFileName: file.name,
       worksheetName: workbook.worksheetName,
       totalRows: workbook.rows.length,
       invalidRows: invalidRows.length
-    }, importRecord.id);
+    }, importRecord.id, dbUser.id);
 
     return NextResponse.json({
       importId: importRecord.id,

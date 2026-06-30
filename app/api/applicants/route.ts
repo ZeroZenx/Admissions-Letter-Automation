@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
+import { counselorApplicantWhereClause, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,8 @@ const filterColumns: Record<string, string> = {
 
 export async function GET(request: Request) {
   try {
-    await requireAuth(request);
+    const user = await requireAuth(request);
+    const dbUser = await ensureDbUser(user);
     const url = new URL(request.url);
     const clauses: string[] = [];
     const params: string[] = [];
@@ -26,6 +28,11 @@ export async function GET(request: Request) {
         params.push(value);
         clauses.push(`${column} = $${params.length}`);
       }
+    }
+    const ownership = counselorApplicantWhereClause(user, dbUser.id, params.length + 1);
+    if (ownership.clause) {
+      clauses.push(ownership.clause);
+      params.push(...ownership.params);
     }
 
     const result = await query(

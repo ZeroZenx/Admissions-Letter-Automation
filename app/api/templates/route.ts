@@ -6,6 +6,7 @@ import { detectDocxPlaceholders } from "@/lib/docx-placeholders";
 import { handleApiError } from "@/lib/http";
 import { uploadLimits, validateFileSize } from "@/lib/request-limits";
 import { saveBuffer } from "@/lib/storage";
+import { ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
 
@@ -29,7 +30,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requireAuth(request, ["Admin", "Admissions Supervisor"]);
+    const user = await requireAuth(request, ["Admin", "Admissions Supervisor"]);
+    const dbUser = await ensureDbUser(user);
     const formData = await request.formData();
     const file = formData.get("file");
     const name = String(formData.get("name") || "");
@@ -49,24 +51,25 @@ export async function POST(request: Request) {
     const storageKey = await saveBuffer("templates", file.name, buffer);
 
     const result = await query<{ id: string }>(
-      `INSERT INTO templates (name, template_type, original_file_name, storage_key, placeholders, is_active)
-       VALUES ($1, $2, $3, $4, $5, true)
+      `INSERT INTO templates (name, template_type, original_file_name, storage_key, placeholders, is_active, uploaded_by)
+       VALUES ($1, $2, $3, $4, $5, true, $6)
        ON CONFLICT (template_type) DO UPDATE SET
          name = EXCLUDED.name,
          original_file_name = EXCLUDED.original_file_name,
          storage_key = EXCLUDED.storage_key,
          placeholders = EXCLUDED.placeholders,
          is_active = true,
+         uploaded_by = EXCLUDED.uploaded_by,
          uploaded_at = now()
        RETURNING id`,
-      [name, templateType, file.name, storageKey, placeholders]
+      [name, templateType, file.name, storageKey, placeholders, dbUser.id]
     );
 
     await audit("template.upserted", "templates", {
       templateType,
       originalFileName: file.name,
       placeholderCount: placeholders.length
-    }, result.rows[0].id);
+    }, result.rows[0].id, dbUser.id);
 
     return NextResponse.json({ id: result.rows[0].id, placeholders });
   } catch (error) {
