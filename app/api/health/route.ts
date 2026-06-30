@@ -1,8 +1,15 @@
+import { execFile } from "node:child_process";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
+import path from "node:path";
+import { promisify } from "node:util";
 import { NextResponse } from "next/server";
 import { getAuthEnv, getClientAuthEnv, getDbEnv, getPdfEnv, getStorageEnv } from "@/lib/env";
 import { query } from "@/lib/db";
+import { storagePath } from "@/lib/storage";
 
 export const runtime = "nodejs";
+
+const execFileAsync = promisify(execFile);
 
 export async function GET() {
   const checks: Record<string, { ok: boolean; detail?: string }> = {};
@@ -36,15 +43,17 @@ export async function GET() {
   }
 
   try {
-    const storage = getStorageEnv();
-    checks.storage = { ok: true, detail: storage.APP_STORAGE_DIR };
+    getStorageEnv();
+    await verifyStorageWritable();
+    checks.storage = { ok: true, detail: "writable" };
   } catch (error) {
     checks.storage = { ok: false, detail: errorMessage(error) };
   }
 
   try {
     const pdf = getPdfEnv();
-    checks.pdf = { ok: true, detail: pdf.SOFFICE_PATH ? "custom soffice path configured" : "using PATH soffice" };
+    const version = await verifySofficeAvailable(pdf.SOFFICE_PATH || "soffice");
+    checks.pdf = { ok: true, detail: `${pdf.SOFFICE_PATH ? "custom" : "PATH"} soffice available${version ? `: ${version}` : ""}` };
   } catch (error) {
     checks.pdf = { ok: false, detail: errorMessage(error) };
   }
@@ -55,4 +64,16 @@ export async function GET() {
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unknown error";
+}
+
+async function verifyStorageWritable() {
+  const probePath = storagePath(path.join(".health", `probe-${Date.now()}-${Math.random().toString(16).slice(2)}.tmp`));
+  await mkdir(path.dirname(probePath), { recursive: true });
+  await writeFile(probePath, "ok");
+  await unlink(probePath);
+}
+
+async function verifySofficeAvailable(soffice: string) {
+  const { stdout } = await execFileAsync(soffice, ["--version"], { timeout: 5000 });
+  return stdout.toString().split(/\r?\n/)[0]?.trim();
 }

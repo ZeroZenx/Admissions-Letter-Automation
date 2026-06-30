@@ -8,7 +8,7 @@ Use this checklist before enabling COSTAATT staff access.
 - `DATABASE_URL` points to the production database over TLS where supported.
 - Persistent storage is configured for generated DOCX/PDF files.
 - LibreOffice is installed and `SOFFICE_PATH` points to the headless executable, or a replacement converter is implemented behind `lib/pdf-converter.ts`.
-- `/api/health` returns `ok: true`.
+- `/api/health` returns `ok: true`, confirms database access, confirms generated-file storage is writable, and confirms the PDF converter executable responds.
 - `/api/health` includes a passing `clientAuth` check with `Mail.Send` in the reported Graph scopes.
 
 ## Microsoft Entra
@@ -44,7 +44,7 @@ Use this checklist before enabling COSTAATT staff access.
 - PDF email attachments are limited to 10 MB.
 - Email HTML is sanitized before sending and logging.
 - Email Queue exposes recent send history, status, resend reasons, and errors without returning stored email bodies.
-- Download APIs require authenticated access and do not expose raw storage paths.
+- Health and download APIs do not expose raw storage paths.
 - Individual and ZIP generated-letter downloads are audited by generated-letter ID.
 - Database constraints enforce known import, applicant email, generated letter, and email log statuses.
 - A partial unique index blocks duplicate original email sends while allowing authorized resends with a reason.
