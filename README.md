@@ -16,6 +16,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Convert generated DOCX files to PDF through LibreOffice/`soffice` when available.
 - Optionally generate DOCX/PDF files automatically for valid rows immediately after upload.
 - Optionally send generated PDFs automatically after upload using Microsoft Graph and the authenticated mailbox.
+- Upload automation preflights required `TemplateType` templates and field mappings before generating or sending.
 - Preview/download generated DOCX/PDF files and download a bulk ZIP.
 - Audit individual and bulk generated-letter downloads by generated-letter ID.
 - Microsoft Entra bearer-token verification for production API access.

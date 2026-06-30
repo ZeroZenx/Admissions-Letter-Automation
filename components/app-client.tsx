@@ -88,6 +88,16 @@ type ImportRecord = {
   imported_by_email: string | null;
 };
 
+type TemplatePreflight = {
+  templateType: string;
+  applicantCount: number;
+  status: "ready" | "missing_template" | "inactive_template" | "missing_mappings";
+  ready: boolean;
+  placeholderCount: number;
+  mappingCount: number;
+  missingMappings: number;
+};
+
 type EmailLog = {
   id: string;
   generated_letter_id: string | null;
@@ -238,7 +248,13 @@ export function AppClient() {
     const autoGenerate = formData.get("autoGenerate") === "on";
     const autoSend = formData.get("autoSend") === "on";
     const response = await authenticatedFetch("/api/import", { method: "POST", body: formData });
-    const body = await readJson<{ validRows?: number; invalidRows?: number; validApplicantIds?: string[]; error?: string }>(response);
+    const body = await readJson<{
+      validRows?: number;
+      invalidRows?: number;
+      validApplicantIds?: string[];
+      preflight?: TemplatePreflight[];
+      error?: string;
+    }>(response);
     if (!response.ok) {
       setBusy(false);
       setMessage(body.error ?? "Import failed.");
@@ -247,7 +263,10 @@ export function AppClient() {
     }
 
     let importedMessage = `Imported ${body.validRows} valid rows. ${body.invalidRows} need review.`;
-    if ((autoGenerate || autoSend) && body.validApplicantIds?.length) {
+    const blockedTemplates = body.preflight?.filter((item) => !item.ready) ?? [];
+    if (blockedTemplates.length) {
+      importedMessage = `${importedMessage} Automation preflight blocked ${blockedTemplates.map((item) => `${item.templateType}: ${item.status}`).join(", ")}.`;
+    } else if ((autoGenerate || autoSend) && body.validApplicantIds?.length) {
       const bulkFetch = autoSend ? authenticatedGraphFetch : authenticatedFetch;
       const generationResponse = await bulkFetch("/api/generate-bulk", {
         method: "POST",

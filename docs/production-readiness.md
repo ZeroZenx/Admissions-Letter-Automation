@@ -61,6 +61,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Confirm the dashboard Import Review panel shows uploaded file, worksheet, status, valid/invalid row counts, uploader, and row-level errors.
 - Confirm imported applicant records show `EmailStatus`, `SentDate`, `WordFileName`, `PDFFileName`, `ErrorMessage`, `ProcessedByFlow`, and `TemplateType`.
 - Confirm the upload automation option generates DOCX/PDF files for valid rows and writes file names back to applicant records.
+- Confirm upload automation is blocked with a clear preflight message when a required `TemplateType` is missing, inactive, or unmapped.
 - Confirm generation failures write applicant `ErrorMessage` values and failed generated-letter statuses.
 - Confirm the upload send option uses the authenticated Microsoft Graph mailbox, updates email status/sent dates, and records row-level errors.
 - If counselor ownership is used, set `applicants.counselor_user_id`; counselors can access unassigned applicants and applicants assigned to their user record, while Admin and Admissions Supervisor roles can access all records.

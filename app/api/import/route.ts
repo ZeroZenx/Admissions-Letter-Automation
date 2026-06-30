@@ -80,6 +80,7 @@ export async function POST(request: Request) {
       "SELECT id FROM applicants WHERE import_id = $1 AND validation_errors = '[]'::jsonb ORDER BY created_at",
       [importRecord.id]
     );
+    const preflight = await buildAutomationPreflight(importRecord.id);
 
     return NextResponse.json({
       importId: importRecord.id,
@@ -87,9 +88,53 @@ export async function POST(request: Request) {
       validRows: workbook.rows.length - invalidRows.length,
       invalidRows: invalidRows.length,
       validApplicantIds: validApplicants.rows.map((row) => row.id),
+      preflight,
       errors: invalidRows
     });
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+async function buildAutomationPreflight(importId: string) {
+  const requiredTemplates = await query<{ template_type: string; applicant_count: string }>(
+    `SELECT template_type, count(*) AS applicant_count
+       FROM applicants
+      WHERE import_id = $1 AND validation_errors = '[]'::jsonb
+      GROUP BY template_type
+      ORDER BY template_type`,
+    [importId]
+  );
+  const templates = await query<{
+    template_type: string;
+    is_active: boolean;
+    placeholder_count: string;
+    mapping_count: string;
+  }>(
+    `SELECT t.template_type, t.is_active,
+            jsonb_array_length(t.placeholders) AS placeholder_count,
+            count(fm.id) AS mapping_count
+       FROM templates t
+       LEFT JOIN field_mappings fm ON fm.template_id = t.id
+      GROUP BY t.id
+      ORDER BY t.template_type`
+  );
+  const templateMap = new Map(templates.rows.map((template) => [template.template_type, template]));
+
+  return requiredTemplates.rows.map((required) => {
+    const template = templateMap.get(required.template_type);
+    const placeholderCount = Number(template?.placeholder_count ?? 0);
+    const mappingCount = Number(template?.mapping_count ?? 0);
+    const missingMappings = Math.max(placeholderCount - mappingCount, 0);
+    const ready = Boolean(template?.is_active) && missingMappings === 0;
+    return {
+      templateType: required.template_type,
+      applicantCount: Number(required.applicant_count),
+      status: !template ? "missing_template" : !template.is_active ? "inactive_template" : missingMappings ? "missing_mappings" : "ready",
+      ready,
+      placeholderCount,
+      mappingCount,
+      missingMappings
+    };
+  });
 }

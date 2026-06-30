@@ -13,9 +13,20 @@ test("import route returns valid applicant ids for upload-time automation", asyn
   const source = await readFile("app/api/import/route.ts", "utf8");
 
   assert.match(source, /validApplicantIds/);
+  assert.match(source, /buildAutomationPreflight/);
+  assert.match(source, /preflight/);
   assert.match(source, /if \(validateBannerRow\(row\)\.length\) continue/);
   assert.match(source, /invalidRows\.length \? "review" : "imported"/);
   assert.match(source, /validation_errors = '\[\]'::jsonb/);
+});
+
+test("import automation preflight checks template readiness before generation", async () => {
+  const source = await readFile("app/api/import/route.ts", "utf8");
+
+  assert.match(source, /missing_template/);
+  assert.match(source, /inactive_template/);
+  assert.match(source, /missing_mappings/);
+  assert.match(source, /jsonb_array_length\(t\.placeholders\)/);
 });
 
 test("imports endpoint exposes upload review metadata without storage paths", async () => {
@@ -49,6 +60,8 @@ test("upload UI offers automatic document generation and displays operational co
 
   assert.match(source, /Import Review/);
   assert.match(source, /Rows Needing Review/);
+  assert.match(source, /Automation preflight blocked/);
+  assert.match(source, /blockedTemplates\.length/);
   assert.match(source, /name="autoGenerate"/);
   assert.match(source, /name="autoSend"/);
   assert.match(source, /Generate DOCX\/PDF files for valid rows after import/);
