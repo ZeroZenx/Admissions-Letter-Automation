@@ -8,6 +8,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Validate required Banner fields.
 - Store imports, applicants, templates, field mappings, generated letters, and audit logs in PostgreSQL.
 - Manage DOCX templates and detect placeholders from `«FIELD_NAME»`, `{{FIELD_NAME}}`, and Word content-control placeholder text.
+- Activate or deactivate managed templates without deleting historical generated-letter references.
 - Map detected placeholders to Banner fields.
 - Generate completed DOCX files while preserving the original DOCX package formatting.
 - Convert generated DOCX files to PDF through LibreOffice/`soffice` when available.
@@ -122,4 +123,5 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Security headers are applied by `middleware.ts`.
 - Database integrity constraints and indexes are applied through `npm run db:setup`.
 - Counselor ownership is enforced when `applicants.counselor_user_id` is configured.
+- Template activation changes are restricted to Admin and Admissions Supervisor roles and audited.
 - Default email content and PDF converter mode are persisted in `app_settings`.

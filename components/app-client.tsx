@@ -230,6 +230,20 @@ export function AppClient() {
     await refresh();
   }
 
+  async function updateTemplateStatus(template: Template, isActive: boolean) {
+    setBusy(true);
+    setMessage("");
+    const response = await authenticatedFetch("/api/templates", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ templateId: template.id, isActive })
+    });
+    const body = await readJson<{ error?: string }>(response);
+    setBusy(false);
+    setMessage(response.ok ? `${template.template_type} template ${isActive ? "activated" : "deactivated"}.` : body.error ?? "Template status could not be updated.");
+    await refresh();
+  }
+
   async function saveMappings(template: Template, formData: FormData) {
     const mappings = template.placeholders.map((placeholder) => ({
       placeholder: placeholder.name,
@@ -343,7 +357,9 @@ export function AppClient() {
               onSelected={setSelectedApplicants}
             />
           )}
-          {canUseWorkspace && active === "templates" && <TemplatesPage busy={busy} templates={templates} onUpload={uploadTemplate} />}
+          {canUseWorkspace && active === "templates" && (
+            <TemplatesPage busy={busy} templates={templates} onUpload={uploadTemplate} onStatusChange={updateTemplateStatus} />
+          )}
           {canUseWorkspace && active === "mappings" && <MappingsPage templates={templates} onSave={saveMappings} />}
           {canUseWorkspace && active === "generate" && (
             <GeneratePage
@@ -454,11 +470,13 @@ function ApplicantsPage({
 function TemplatesPage({
   busy,
   templates,
-  onUpload
+  onUpload,
+  onStatusChange
 }: {
   busy: boolean;
   templates: Template[];
   onUpload: (formData: FormData) => void;
+  onStatusChange: (template: Template, isActive: boolean) => void;
 }) {
   return (
     <div className="grid two">
@@ -491,6 +509,14 @@ function TemplatesPage({
             <span className={template.is_active ? "status ok" : "status error"}>
               {template.is_active ? "Active" : "Inactive"}
             </span>
+            <button
+              className="button secondary"
+              style={{ marginTop: 10 }}
+              disabled={busy}
+              onClick={() => onStatusChange(template, !template.is_active)}
+            >
+              {template.is_active ? "Deactivate" : "Activate"}
+            </button>
           </div>
         ))}
       </Panel>

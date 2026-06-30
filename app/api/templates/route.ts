@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
@@ -9,6 +10,11 @@ import { saveBuffer } from "@/lib/storage";
 import { ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
+
+const statusSchema = z.object({
+  templateId: z.string().uuid(),
+  isActive: z.boolean()
+});
 
 export async function GET(request: Request) {
   try {
@@ -72,6 +78,34 @@ export async function POST(request: Request) {
     }, result.rows[0].id, dbUser.id);
 
     return NextResponse.json({ id: result.rows[0].id, placeholders });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const user = await requireAuth(request, ["Admin", "Admissions Supervisor"]);
+    const dbUser = await ensureDbUser(user);
+    const body = statusSchema.parse(await request.json());
+
+    const result = await query<{ id: string; template_type: string; is_active: boolean }>(
+      `UPDATE templates
+          SET is_active = $1
+        WHERE id = $2
+        RETURNING id, template_type, is_active`,
+      [body.isActive, body.templateId]
+    );
+
+    const template = result.rows[0];
+    if (!template) return NextResponse.json({ error: "Template not found." }, { status: 404 });
+
+    await audit("template.status_updated", "templates", {
+      templateType: template.template_type,
+      isActive: template.is_active
+    }, template.id, dbUser.id);
+
+    return NextResponse.json({ template });
   } catch (error) {
     return handleApiError(error);
   }
