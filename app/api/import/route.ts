@@ -45,6 +45,7 @@ export async function POST(request: Request) {
 
       const importId = importResult.rows[0].id;
       for (const row of workbook.rows) {
+        if (validateBannerRow(row).length) continue;
         const { columns, values } = rowToApplicantColumns(row, importId);
         const placeholders = values.map((_value, index) => `$${index + 1}`).join(", ");
         await client.query(
@@ -67,11 +68,17 @@ export async function POST(request: Request) {
       invalidRows: invalidRows.length
     }, importRecord.id, dbUser.id);
 
+    const validApplicants = await query<{ id: string }>(
+      "SELECT id FROM applicants WHERE import_id = $1 AND validation_errors = '[]'::jsonb ORDER BY created_at",
+      [importRecord.id]
+    );
+
     return NextResponse.json({
       importId: importRecord.id,
       totalRows: workbook.rows.length,
       validRows: workbook.rows.length - invalidRows.length,
       invalidRows: invalidRows.length,
+      validApplicantIds: validApplicants.rows.map((row) => row.id),
       errors: invalidRows
     });
   } catch (error) {

@@ -247,6 +247,21 @@ a {
   padding: 9px 11px;
 }
 
+.check-row {
+  align-items: center;
+  color: #31413e;
+  display: flex;
+  font-size: 13px;
+  font-weight: 650;
+  gap: 9px;
+  margin: 0 0 16px;
+}
+
+.check-row input {
+  height: 16px;
+  width: 16px;
+}
+
 .filters {
   display: grid;
   grid-template-columns: repeat(5, minmax(140px, 1fr));
@@ -261,7 +276,7 @@ a {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 860px;
+  min-width: 1120px;
 }
 
 th,

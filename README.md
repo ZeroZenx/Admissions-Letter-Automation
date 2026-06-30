@@ -6,12 +6,14 @@ Internal Next.js application for importing Banner admissions exports, managing W
 
 - Upload Banner Excel export and read the `Admissions` worksheet.
 - Validate required Banner fields.
+- Show Banner operational fields including `EmailStatus`, `SentDate`, `WordFileName`, `PDFFileName`, `ErrorMessage`, `ProcessedByFlow`, and `TemplateType`.
 - Store imports, applicants, templates, field mappings, generated letters, and audit logs in PostgreSQL.
 - Manage DOCX templates and detect placeholders from `«FIELD_NAME»`, `{{FIELD_NAME}}`, and Word content-control placeholder text.
 - Activate or deactivate managed templates without deleting historical generated-letter references.
 - Map detected placeholders to Banner fields.
 - Generate completed DOCX files while preserving the original DOCX package formatting.
 - Convert generated DOCX files to PDF through LibreOffice/`soffice` when available.
+- Optionally generate DOCX/PDF files automatically for valid rows immediately after upload.
 - Preview/download generated DOCX/PDF files and download a bulk ZIP.
 - Audit individual and bulk generated-letter downloads by generated-letter ID.
 - Microsoft Entra bearer-token verification for production API access.
@@ -115,6 +117,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 ## Notes
 
 - Banner remains the source of truth. This app imports Banner data into a staging database only.
+- Admissions staff can review source-truth email status, sent date, generated file names, error message, processing flag, and selected template per applicant.
 - Email sending is intentionally not automatic after import.
 - Duplicate sends are blocked unless an authorized user supplies a resend reason.
 - Email send history is visible in the Email Queue without exposing stored email bodies.

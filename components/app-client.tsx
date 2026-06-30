@@ -33,6 +33,11 @@ type Applicant = {
   program: string;
   admission_status: string;
   email_status: string;
+  sent_date: string | null;
+  word_file_name: string | null;
+  pdf_file_name: string | null;
+  error_message: string | null;
+  processed_by_flow: boolean;
   template_type: string;
   validation_errors: string[];
 };
@@ -213,10 +218,31 @@ export function AppClient() {
   async function uploadImport(formData: FormData) {
     setBusy(true);
     setMessage("");
+    const autoGenerate = formData.get("autoGenerate") === "on";
     const response = await authenticatedFetch("/api/import", { method: "POST", body: formData });
-    const body = await readJson<{ validRows?: number; invalidRows?: number; error?: string }>(response);
+    const body = await readJson<{ validRows?: number; invalidRows?: number; validApplicantIds?: string[]; error?: string }>(response);
+    if (!response.ok) {
+      setBusy(false);
+      setMessage(body.error ?? "Import failed.");
+      await refresh();
+      return;
+    }
+
+    let importedMessage = `Imported ${body.validRows} valid rows. ${body.invalidRows} need review.`;
+    if (autoGenerate && body.validApplicantIds?.length) {
+      const generationResponse = await authenticatedFetch("/api/generate-bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicantIds: body.validApplicantIds })
+      });
+      const generationBody = await readJson<{ results?: Array<{ ok: boolean }>; error?: string }>(generationResponse);
+      const failures = generationBody.results?.filter((result) => !result.ok).length ?? 0;
+      importedMessage = generationResponse.ok
+        ? `${importedMessage} Generated DOCX/PDF files for ${body.validApplicantIds.length - failures} records. ${failures} failed.`
+        : `${importedMessage} Automatic generation failed: ${generationBody.error ?? "unknown error"}.`;
+    }
     setBusy(false);
-    setMessage(response.ok ? `Imported ${body.validRows} valid rows. ${body.invalidRows} need review.` : body.error ?? "Import failed.");
+    setMessage(importedMessage);
     await refresh();
   }
 
@@ -450,6 +476,10 @@ function UploadPage({ busy, onUpload }: { busy: boolean; onUpload: (formData: Fo
           <label>Admissions workbook</label>
           <input name="file" type="file" accept=".xlsx,.xls" required />
         </div>
+        <label className="check-row">
+          <input name="autoGenerate" type="checkbox" defaultChecked />
+          Generate DOCX/PDF files for valid rows after import
+        </label>
         <button className="button" disabled={busy}>
           <Upload size={16} /> Import Admissions Worksheet
         </button>
@@ -901,6 +931,11 @@ function RecordsTable({
             <th>TemplateType</th>
             <th>AdmissionStatus</th>
             <th>EmailStatus</th>
+            {!compact ? <th>SentDate</th> : null}
+            {!compact ? <th>WordFileName</th> : null}
+            {!compact ? <th>PDFFileName</th> : null}
+            {!compact ? <th>ErrorMessage</th> : null}
+            {!compact ? <th>ProcessedByFlow</th> : null}
             {!compact ? <th>Validation</th> : null}
           </tr>
         </thead>
@@ -924,6 +959,17 @@ function RecordsTable({
               <td>
                 <span className="status">{applicant.email_status}</span>
               </td>
+              {!compact ? <td>{applicant.sent_date ? new Date(applicant.sent_date).toLocaleString() : ""}</td> : null}
+              {!compact ? <td>{applicant.word_file_name ?? ""}</td> : null}
+              {!compact ? <td>{applicant.pdf_file_name ?? ""}</td> : null}
+              {!compact ? <td>{applicant.error_message ?? ""}</td> : null}
+              {!compact ? (
+                <td>
+                  <span className={applicant.processed_by_flow ? "status ok" : "status"}>
+                    {applicant.processed_by_flow ? "Yes" : "No"}
+                  </span>
+                </td>
+              ) : null}
               {!compact ? (
                 <td>
                   {applicant.validation_errors?.length ? (

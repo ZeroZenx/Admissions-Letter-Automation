@@ -37,7 +37,8 @@ export async function GET(request: Request) {
 
     const result = await query(
       `SELECT id, student_id, first_name, middle_name, last_name, email, campus, program,
-              admission_status, email_status, template_type, validation_errors, created_at
+              admission_status, email_status, sent_date, word_file_name, pdf_file_name,
+              error_message, processed_by_flow, template_type, validation_errors, created_at
          FROM applicants
          ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}
          ORDER BY created_at DESC

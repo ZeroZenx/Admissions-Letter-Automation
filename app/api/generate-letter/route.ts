@@ -55,13 +55,23 @@ export async function POST(request: Request) {
     );
 
     let pdfStorageKey: string | null = null;
+    let pdfFileName: string | null = null;
     if (body.convertPdf) {
       pdfStorageKey = await convertDocxToPdf(docxStorageKey);
+      pdfFileName = fileBase.replace(/\.docx$/i, ".pdf");
       await query("UPDATE generated_letters SET pdf_storage_key = $1, status = 'pdf_generated' WHERE id = $2", [
         pdfStorageKey,
         letterResult.rows[0].id
       ]);
     }
+    await query(
+      `UPDATE applicants
+          SET word_file_name = $1,
+              pdf_file_name = COALESCE($2, pdf_file_name),
+              error_message = null
+        WHERE id = $3`,
+      [fileBase, pdfFileName, body.applicantId]
+    );
 
     await audit("letter.generated", "generated_letters", {
       studentId: applicant.student_id,
