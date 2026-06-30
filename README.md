@@ -132,6 +132,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Upload and email attachment size limits are enforced server-side.
 - Security headers are applied by `middleware.ts`.
 - Database integrity constraints and indexes are applied through `npm run db:setup`.
+- Query-performance indexes cover import review, automation preflight, generated letters, and email activity.
 - Counselor ownership is enforced when `applicants.counselor_user_id` is configured.
 - Template activation changes are restricted to Admin and Admissions Supervisor roles and audited.
 - Default email content and PDF converter mode are persisted in `app_settings`.

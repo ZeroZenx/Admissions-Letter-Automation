@@ -15,6 +15,16 @@ test("database setup script includes operational integrity migration", async () 
   assert.match(packageJson.scripts["db:migrate"], /001_initial_schema\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /002_operational_integrity\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /003_app_settings\.sql/);
+  assert.match(packageJson.scripts["db:migrate"], /004_query_performance\.sql/);
+});
+
+test("query performance migration covers operational dashboard and automation queries", async () => {
+  const sql = await readFile("db/migrations/004_query_performance.sql", "utf8");
+
+  assert.match(sql, /applicants_import_valid_idx/);
+  assert.match(sql, /generated_letters_generated_at_idx/);
+  assert.match(sql, /email_logs_created_at_idx/);
+  assert.match(sql, /field_mappings_template_idx/);
 });
 
 test("migration runner wraps each SQL file in a transaction", async () => {
