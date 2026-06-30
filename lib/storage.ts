@@ -1,12 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { getServerEnv } from "@/lib/env";
 
-const storageRoot = path.resolve(process.env.APP_STORAGE_DIR ?? "./storage");
+function storageRoot() {
+  return path.resolve(getServerEnv().APP_STORAGE_DIR);
+}
 
 export function storagePath(key: string) {
   const normalized = path.normalize(key).replace(/^(\.\.(\/|\\|$))+/, "");
-  return path.join(storageRoot, normalized);
+  return path.join(storageRoot(), normalized);
 }
 
 export async function saveBuffer(area: string, originalName: string, buffer: Buffer) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ClipboardList,
   Database,
@@ -101,7 +101,7 @@ export function AppClient() {
     program: ""
   });
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
     const [applicantRes, templateRes, generatedRes, auditRes] = await Promise.all([
       fetch(`/api/applicants?${query.toString()}`),
@@ -113,11 +113,11 @@ export function AppClient() {
     if (templateRes.ok) setTemplates((await templateRes.json()).templates);
     if (generatedRes.ok) setGeneratedLetters((await generatedRes.json()).generatedLetters);
     if (auditRes.ok) setAuditLogs((await auditRes.json()).auditLogs);
-  }
+  }, [filters]);
 
   useEffect(() => {
     void refresh();
-  }, [filters]);
+  }, [refresh]);
 
   const metrics = useMemo(() => {
     const readyTemplates = templates.filter((template) => template.is_active).length;

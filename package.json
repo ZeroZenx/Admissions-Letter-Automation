@@ -6,13 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "archiver": "^7.0.1",
     "docxtemplater": "^3.62.0",
     "exceljs": "^4.4.0",
+    "jose": "^5.10.0",
     "lucide-react": "^0.468.0",
     "next": "^15.1.0",
     "pg": "^8.13.1",
@@ -29,6 +31,7 @@
     "@types/react-dom": "^19.0.2",
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.1.0",
+    "tsx": "^4.20.0",
     "typescript": "^5.7.2"
   },
   "overrides": {

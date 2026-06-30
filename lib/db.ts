@@ -1,27 +1,26 @@
 import { Pool, type QueryResultRow } from "pg";
+import { getServerEnv } from "@/lib/env";
 
 declare global {
-  // eslint-disable-next-line no-var
   var costaattPool: Pool | undefined;
 }
 
-export const pool =
-  global.costaattPool ??
-  new Pool({
-    connectionString: process.env.DATABASE_URL
-  });
-
-if (process.env.NODE_ENV !== "production") {
-  global.costaattPool = pool;
+function getPool() {
+  if (!global.costaattPool) {
+    global.costaattPool = new Pool({
+      connectionString: getServerEnv().DATABASE_URL
+    });
+  }
+  return global.costaattPool;
 }
 
 export async function query<T extends QueryResultRow = QueryResultRow>(text: string, params: unknown[] = []) {
-  const result = await pool.query<T>(text, params);
+  const result = await getPool().query<T>(text, params);
   return result;
 }
 
 export async function withTransaction<T>(work: (client: import("pg").PoolClient) => Promise<T>) {
-  const client = await pool.connect();
+  const client = await getPool().connect();
   try {
     await client.query("BEGIN");
     const value = await work(client);

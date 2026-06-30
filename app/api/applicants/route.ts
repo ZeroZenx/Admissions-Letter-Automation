@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { handleApiError } from "@/lib/http";
 
 export const runtime = "nodejs";
 
@@ -12,27 +14,32 @@ const filterColumns: Record<string, string> = {
 };
 
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const clauses: string[] = [];
-  const params: string[] = [];
+  try {
+    await requireAuth(request);
+    const url = new URL(request.url);
+    const clauses: string[] = [];
+    const params: string[] = [];
 
-  for (const [param, column] of Object.entries(filterColumns)) {
-    const value = url.searchParams.get(param);
-    if (value) {
-      params.push(value);
-      clauses.push(`${column} = $${params.length}`);
+    for (const [param, column] of Object.entries(filterColumns)) {
+      const value = url.searchParams.get(param);
+      if (value) {
+        params.push(value);
+        clauses.push(`${column} = $${params.length}`);
+      }
     }
+
+    const result = await query(
+      `SELECT id, student_id, first_name, middle_name, last_name, email, campus, program,
+              admission_status, email_status, template_type, validation_errors, created_at
+         FROM applicants
+         ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}
+         ORDER BY created_at DESC
+         LIMIT 500`,
+      params
+    );
+
+    return NextResponse.json({ applicants: result.rows });
+  } catch (error) {
+    return handleApiError(error);
   }
-
-  const result = await query(
-    `SELECT id, student_id, first_name, middle_name, last_name, email, campus, program,
-            admission_status, email_status, template_type, validation_errors, created_at
-       FROM applicants
-       ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}
-       ORDER BY created_at DESC
-       LIMIT 500`,
-    params
-  );
-
-  return NextResponse.json({ applicants: result.rows });
 }
