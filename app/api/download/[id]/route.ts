@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
@@ -31,6 +32,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       type === "docx"
         ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         : "application/pdf";
+    await audit("letter.downloaded", "generated_letters", {
+      generatedLetterId: id,
+      fileType: type,
+      studentId: result.rows[0]?.student_id
+    }, id, dbUser.id);
 
     return new NextResponse(buffer, {
       headers: {

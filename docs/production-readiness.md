@@ -44,6 +44,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Email HTML is sanitized before sending and logging.
 - Email Queue exposes recent send history, status, resend reasons, and errors without returning stored email bodies.
 - Download APIs require authenticated access and do not expose raw storage paths.
+- Individual and ZIP generated-letter downloads are audited by generated-letter ID.
 - Database constraints enforce known import, applicant email, generated letter, and email log statuses.
 - A partial unique index blocks duplicate original email sends while allowing authorized resends with a reason.
 - Settings changes are restricted to Admin and Admissions Supervisor roles and are audited.
@@ -59,6 +60,7 @@ Use this checklist before enabling COSTAATT staff access.
 - If counselor ownership is used, set `applicants.counselor_user_id`; counselors can access unassigned applicants and applicants assigned to their user record, while Admin and Admissions Supervisor roles can access all records.
 - Generate sample letters for each `TemplateType`.
 - Open generated DOCX and PDF files and confirm logos, tables, headers, footers, signatures, and formatting are preserved.
+- Download generated letters individually and as a ZIP, then confirm corresponding audit events are created.
 - Send a test email from a counselor account to a controlled test mailbox.
 - Confirm duplicate-send prevention blocks a second send without a resend reason.
 - Confirm the Email Queue recent activity table records sent, failed, and resent attempts for the correct counselor scope.

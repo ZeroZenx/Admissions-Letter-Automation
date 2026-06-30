@@ -13,6 +13,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Generate completed DOCX files while preserving the original DOCX package formatting.
 - Convert generated DOCX files to PDF through LibreOffice/`soffice` when available.
 - Preview/download generated DOCX/PDF files and download a bulk ZIP.
+- Audit individual and bulk generated-letter downloads by generated-letter ID.
 - Microsoft Entra bearer-token verification for production API access.
 - Role-guarded API routes for Admin, Admissions Supervisor, Counselor, and Viewer access.
 - Microsoft Graph `/me/sendMail` route that sends from the authenticated counselor mailbox.
@@ -118,6 +119,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Duplicate sends are blocked unless an authorized user supplies a resend reason.
 - Email send history is visible in the Email Queue without exposing stored email bodies.
 - Raw storage paths are never returned from download APIs; files are fetched by generated-letter id.
+- ZIP downloads reject missing generated-letter IDs instead of returning partial archives.
 - Production Graph email sending requires a delegated Microsoft Graph bearer token with `Mail.Send`.
 - Upload and email attachment size limits are enforced server-side.
 - Security headers are applied by `middleware.ts`.

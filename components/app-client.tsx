@@ -291,6 +291,26 @@ export function AppClient() {
     URL.revokeObjectURL(url);
   }
 
+  async function downloadZip(letterIds: string[]) {
+    const response = await authenticatedFetch("/api/download-zip", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ generatedLetterIds: letterIds })
+    });
+    if (!response.ok) {
+      const body = await readJson<{ error?: string }>(response);
+      setMessage(body.error ?? "Could not download ZIP file.");
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "admissions-letters.zip";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   const title = sections.find((section) => section.id === active)?.label ?? "Dashboard";
   const canUseWorkspace = auth.status === "authenticated";
 
@@ -370,10 +390,11 @@ export function AppClient() {
               onGenerate={generateSelected}
               generatedLetters={generatedLetters}
               onDownload={downloadLetter}
+              onDownloadZip={downloadZip}
             />
           )}
           {canUseWorkspace && active === "email" && (
-            <EmailQueue generatedLetters={generatedLetters} emailLogs={emailLogs} onDownload={downloadLetter} settings={settings} onRefresh={refresh} />
+            <EmailQueue generatedLetters={generatedLetters} emailLogs={emailLogs} onDownload={downloadLetter} onDownloadZip={downloadZip} settings={settings} onRefresh={refresh} />
           )}
           {canUseWorkspace && active === "audit" && <AuditPage auditLogs={auditLogs} />}
           {canUseWorkspace && active === "settings" && (
@@ -579,7 +600,8 @@ function GeneratePage({
   busy,
   onGenerate,
   generatedLetters,
-  onDownload
+  onDownload,
+  onDownloadZip
 }: {
   applicants: Applicant[];
   selected: string[];
@@ -588,6 +610,7 @@ function GeneratePage({
   onGenerate: () => void;
   generatedLetters: GeneratedLetter[];
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
+  onDownloadZip: (letterIds: string[]) => void;
 }) {
   return (
     <div className="grid">
@@ -598,7 +621,7 @@ function GeneratePage({
         </button>
         <RecordsTable applicants={applicants} selected={selected} onSelected={onSelected} compact />
       </Panel>
-      <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} />
+      <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} onDownloadZip={onDownloadZip} />
     </div>
   );
 }
@@ -607,12 +630,14 @@ function EmailQueue({
   generatedLetters,
   emailLogs,
   onDownload,
+  onDownloadZip,
   settings,
   onRefresh
 }: {
   generatedLetters: GeneratedLetter[];
   emailLogs: EmailLog[];
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
+  onDownloadZip: (letterIds: string[]) => void;
   settings: AppSettings;
   onRefresh: () => Promise<void>;
 }) {
@@ -690,7 +715,7 @@ function EmailQueue({
         </button>
       </Panel>
       <EmailLogTable emailLogs={emailLogs} />
-      <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} />
+      <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} onDownloadZip={onDownloadZip} />
     </div>
   );
 }
@@ -918,13 +943,20 @@ function RecordsTable({
 
 function GeneratedTable({
   generatedLetters,
-  onDownload
+  onDownload,
+  onDownloadZip
 }: {
   generatedLetters: GeneratedLetter[];
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
+  onDownloadZip: (letterIds: string[]) => void;
 }) {
+  const downloadableIds = generatedLetters.map((letter) => letter.id);
+
   return (
-    <Panel title="Generated PDFs">
+    <Panel title="Generated Letters">
+      <button className="button secondary" disabled={!downloadableIds.length} onClick={() => onDownloadZip(downloadableIds)}>
+        <FileArchive size={16} /> Download ZIP
+      </button>
       <div className="table-wrap">
         <table>
           <thead>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import archiver from "archiver";
 import { PassThrough } from "node:stream";
 import { z } from "zod";
+import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
@@ -32,6 +33,11 @@ export async function POST(request: Request) {
         WHERE gl.id = ANY($1::uuid[])`,
       [body.generatedLetterIds]
     );
+    const requestedIds = new Set(body.generatedLetterIds);
+    for (const letter of result.rows) requestedIds.delete(letter.id);
+    if (requestedIds.size) {
+      return NextResponse.json({ error: "One or more generated letters were not found." }, { status: 404 });
+    }
 
     const archive = archiver("zip", { zlib: { level: 9 } });
     const stream = new PassThrough();
@@ -42,6 +48,10 @@ export async function POST(request: Request) {
       const key = letter.pdf_storage_key ?? letter.docx_storage_key;
       archive.file(storagePath(key), { name: `${letter.id}.${letter.pdf_storage_key ? "pdf" : "docx"}` });
     }
+    await audit("letters.downloaded_zip", "generated_letters", {
+      generatedLetterIds: body.generatedLetterIds,
+      fileCount: result.rows.length
+    }, undefined, dbUser.id);
     void archive.finalize();
 
     return new NextResponse(stream as unknown as BodyInit, {
