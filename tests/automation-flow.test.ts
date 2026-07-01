@@ -44,8 +44,32 @@ test("letter generation writes created file names back to applicant records", as
 
   assert.match(source, /SET word_file_name = \$1/);
   assert.match(source, /pdf_file_name = COALESCE\(\$2, pdf_file_name\)/);
+  assert.match(source, /wordFileName: fileBase/);
+  assert.match(source, /pdfFileName/);
   assert.match(source, /error_message = null/);
   assert.match(source, /processed_by_flow = true/);
+});
+
+test("PDF conversion updates applicant operational PDF filename", async () => {
+  const source = await readFile("app/api/convert-pdf/route.ts", "utf8");
+
+  assert.match(source, /gl\.applicant_id/);
+  assert.match(source, /a\.template_type/);
+  assert.match(source, /const pdfFileName = `\$\{letter\.student_id\}-\$\{letter\.template_type\}\.pdf`/);
+  assert.match(source, /UPDATE applicants SET pdf_file_name = \$1, error_message = null WHERE id = \$2/);
+  assert.match(source, /pdfFileName/);
+});
+
+test("generated letters endpoint and table expose operational file names", async () => {
+  const routeSource = await readFile("app/api/generated-letters/route.ts", "utf8");
+  const clientSource = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(routeSource, /a\.word_file_name, a\.pdf_file_name/);
+  assert.match(clientSource, /word_file_name: string \| null/);
+  assert.match(clientSource, /pdf_file_name: string \| null/);
+  assert.match(clientSource, /<th>Files<\/th>/);
+  assert.match(clientSource, /letter\.word_file_name/);
+  assert.match(clientSource, /letter\.pdf_file_name/);
 });
 
 test("letter generation records applicant and generated-letter failures", async () => {

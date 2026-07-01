@@ -87,6 +87,8 @@ export async function POST(request: Request) {
     await audit("letter.generated", "generated_letters", {
       studentId: applicant.student_id,
       templateType: applicant.template_type,
+      wordFileName: fileBase,
+      pdfFileName,
       generatedDocx: true,
       generatedPdf: Boolean(pdfStorageKey)
     }, letterResult.rows[0].id, dbUser.id);

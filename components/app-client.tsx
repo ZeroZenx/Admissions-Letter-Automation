@@ -64,6 +64,8 @@ type GeneratedLetter = {
   email: string;
   program: string;
   template_type: string;
+  word_file_name: string | null;
+  pdf_file_name: string | null;
 };
 
 type AuditLog = {
@@ -1142,6 +1144,7 @@ function GeneratedTable({
               <th>StudentID</th>
               <th>Name</th>
               <th>TemplateType</th>
+              <th>Files</th>
               <th>Status</th>
               <th>Generated</th>
               <th>Downloads</th>
@@ -1156,6 +1159,10 @@ function GeneratedTable({
                   <div className="muted">{letter.email}</div>
                 </td>
                 <td>{letter.template_type}</td>
+                <td>
+                  <div>{letter.word_file_name ?? ""}</div>
+                  <div className="muted">{letter.pdf_file_name ?? ""}</div>
+                </td>
                 <td>
                   <span className={letter.pdf_ready ? "status ok" : "status"}>{letter.status}</span>
                 </td>

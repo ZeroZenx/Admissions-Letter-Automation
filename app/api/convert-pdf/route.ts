@@ -18,8 +18,14 @@ export async function POST(request: Request) {
     const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
     const dbUser = await ensureDbUser(user);
     const body = schema.parse(await request.json());
-    const result = await query<{ docx_storage_key: string; counselor_user_id: string | null; student_id: string }>(
-      `SELECT gl.docx_storage_key, a.counselor_user_id, a.student_id
+    const result = await query<{
+      applicant_id: string;
+      docx_storage_key: string;
+      counselor_user_id: string | null;
+      student_id: string;
+      template_type: string;
+    }>(
+      `SELECT gl.applicant_id, gl.docx_storage_key, a.counselor_user_id, a.student_id, a.template_type
          FROM generated_letters gl
          JOIN applicants a ON a.id = gl.applicant_id
         WHERE gl.id = $1`,
@@ -30,13 +36,17 @@ export async function POST(request: Request) {
     enforceApplicantOwnership(user, dbUser.id, letter);
 
     const pdfStorageKey = await convertDocxToPdf(letter.docx_storage_key);
+    const pdfFileName = `${letter.student_id}-${letter.template_type}.pdf`;
     await query("UPDATE generated_letters SET pdf_storage_key = $1, status = 'pdf_generated' WHERE id = $2", [
       pdfStorageKey,
       body.generatedLetterId
     ]);
+    await query("UPDATE applicants SET pdf_file_name = $1, error_message = null WHERE id = $2", [pdfFileName, letter.applicant_id]);
     await audit("letter.converted_pdf", "generated_letters", {
       studentId: letter.student_id,
-      generatedLetterId: body.generatedLetterId
+      templateType: letter.template_type,
+      generatedLetterId: body.generatedLetterId,
+      pdfFileName
     }, body.generatedLetterId, dbUser.id);
     return NextResponse.json({ pdfReady: true });
   } catch (error) {
