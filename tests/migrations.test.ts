@@ -18,6 +18,7 @@ test("database setup script includes operational integrity migration", async () 
   assert.match(packageJson.scripts["db:migrate"], /003_app_settings\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /004_query_performance\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /005_field_mapping_integrity\.sql/);
+  assert.match(packageJson.scripts["db:migrate"], /006_operational_status_consistency\.sql/);
 });
 
 test("query performance migration covers operational dashboard and automation queries", async () => {
@@ -45,4 +46,17 @@ test("field mapping integrity migration enforces canonical Banner fields", async
   for (const field of mappableLetterFields) {
     assert.match(sql, new RegExp(`'${field}'`));
   }
+});
+
+test("operational status consistency migration protects automation audit state", async () => {
+  const sql = await readFile("db/migrations/006_operational_status_consistency.sql", "utf8");
+
+  assert.match(sql, /imports_counts_consistent_chk/);
+  assert.match(sql, /total_rows = valid_rows \+ invalid_rows/);
+  assert.match(sql, /generated_letters_status_consistency_chk/);
+  assert.match(sql, /status <> 'pdf_generated' OR pdf_storage_key IS NOT NULL/);
+  assert.match(sql, /status <> 'failed' OR NULLIF\(trim\(error_message\), ''\) IS NOT NULL/);
+  assert.match(sql, /email_logs_status_consistency_chk/);
+  assert.match(sql, /status <> 'sent' OR sent_at IS NOT NULL/);
+  assert.match(sql, /status <> 'pending' OR sent_at IS NULL/);
 });
