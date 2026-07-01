@@ -895,9 +895,9 @@ function EmailQueue({
         resendReason: resendReason || undefined
       })
     });
-    const result = await readJson<{ error?: string; sent?: boolean }>(response);
+    const result = await readJson<{ error?: string; sent?: boolean; warning?: string }>(response);
     setBusy(false);
-    setMessage(response.ok && result.sent ? "Email sent and logged." : result.error ?? "Email could not be sent.");
+    setMessage(response.ok && result.sent ? result.warning ?? "Email sent and logged." : result.error ?? "Email could not be sent.");
     if (response.ok) await onRefresh();
   }
 

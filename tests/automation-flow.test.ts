@@ -138,3 +138,33 @@ test("email send route blocks pending duplicates before database conflicts", asy
   assert.match(source, /previousSend\?\.status === "sent" && !body\.resendReason/);
   assert.match(source, /already sent/);
 });
+
+test("email send route does not mark delivered mail failed when sent audit logging fails", async () => {
+  const source = await readFile("app/api/send-email/route.ts", "utf8");
+
+  assert.match(source, /UPDATE applicants SET email_status = 'Queued' WHERE id = \$1/);
+  assert.match(source, /email\.queued/);
+  assert.match(source, /UPDATE applicants SET email_status = 'Sending' WHERE id = \$1/);
+  assert.match(source, /await sendGraphMail\(/);
+  assert.match(source, /UPDATE email_logs SET status = 'sent', sent_at = now\(\) WHERE id = \$1/);
+  assert.match(source, /UPDATE applicants SET email_status = 'Sent', sent_date = now\(\), error_message = null WHERE id = \$1/);
+  assert.match(source, /let auditLogged = true/);
+  assert.match(source, /auditLogged = false/);
+  assert.match(source, /Email was sent, but audit logging failed/);
+
+  const graphSendIndex = source.indexOf("await sendGraphMail(");
+  const sentUpdateIndex = source.indexOf("UPDATE email_logs SET status = 'sent'");
+  const catchIndex = source.indexOf("} catch (error) {", graphSendIndex);
+
+  assert.ok(graphSendIndex > -1);
+  assert.ok(sentUpdateIndex > graphSendIndex);
+  assert.ok(catchIndex > graphSendIndex);
+  assert.ok(sentUpdateIndex > catchIndex);
+});
+
+test("email queue surfaces sent-with-warning responses", async () => {
+  const source = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(source, /warning\?: string/);
+  assert.match(source, /result\.warning \?\? "Email sent and logged\."/);
+});

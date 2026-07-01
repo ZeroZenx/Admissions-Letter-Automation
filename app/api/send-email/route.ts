@@ -79,9 +79,16 @@ export async function POST(request: Request) {
       [letter.applicant_id, body.generatedLetterId, letter.email, body.subject, sanitizedBody, body.resendReason ?? null, dbUser.id]
     );
 
-    await query("UPDATE applicants SET email_status = 'Sending' WHERE id = $1", [letter.applicant_id]);
+    await query("UPDATE applicants SET email_status = 'Queued' WHERE id = $1", [letter.applicant_id]);
+    await audit("email.queued", "email_logs", {
+      studentId: letter.student_id,
+      recipient: letter.email,
+      generatedLetterId: body.generatedLetterId,
+      resend: Boolean(body.resendReason)
+    }, emailLog.rows[0].id, dbUser.id);
 
     try {
+      await query("UPDATE applicants SET email_status = 'Sending' WHERE id = $1", [letter.applicant_id]);
       await sendGraphMail({
         accessToken: graphAccessToken,
         recipient: letter.email,
@@ -91,14 +98,6 @@ export async function POST(request: Request) {
         attachmentContent: pdf
       });
 
-      await query("UPDATE email_logs SET status = 'sent', sent_at = now() WHERE id = $1", [emailLog.rows[0].id]);
-      await query("UPDATE applicants SET email_status = 'Sent', sent_date = now() WHERE id = $1", [letter.applicant_id]);
-      await audit("email.sent", "email_logs", {
-        studentId: letter.student_id,
-        recipient: letter.email,
-        generatedLetterId: body.generatedLetterId,
-        resend: Boolean(body.resendReason)
-      }, emailLog.rows[0].id, dbUser.id);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown Graph send failure";
       await query("UPDATE email_logs SET status = 'failed', error_message = $1 WHERE id = $2", [errorMessage, emailLog.rows[0].id]);
@@ -112,7 +111,24 @@ export async function POST(request: Request) {
       throw error;
     }
 
-    return NextResponse.json({ sent: true });
+    await query("UPDATE email_logs SET status = 'sent', sent_at = now() WHERE id = $1", [emailLog.rows[0].id]);
+    await query("UPDATE applicants SET email_status = 'Sent', sent_date = now(), error_message = null WHERE id = $1", [letter.applicant_id]);
+
+    let auditLogged = true;
+    await audit("email.sent", "email_logs", {
+      studentId: letter.student_id,
+      recipient: letter.email,
+      generatedLetterId: body.generatedLetterId,
+      resend: Boolean(body.resendReason)
+    }, emailLog.rows[0].id, dbUser.id).catch(() => {
+      auditLogged = false;
+    });
+
+    return NextResponse.json({
+      sent: true,
+      auditLogged,
+      warning: auditLogged ? undefined : "Email was sent, but audit logging failed. Review the audit log configuration."
+    });
   } catch (error) {
     return handleApiError(error);
   }
