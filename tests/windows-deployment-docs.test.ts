@@ -19,5 +19,7 @@ test("Windows VM deployment guide is linked from operator docs", async () => {
   const checklist = await readFile("docs/production-readiness.md", "utf8");
 
   assert.match(readme, /docs\/windows-vm-deployment\.md/);
+  assert.match(readme, /npm run dev -- -p 6001/);
+  assert.match(readme, /http:\/\/localhost:6001/);
   assert.match(checklist, /windows-vm-deployment\.md/);
 });

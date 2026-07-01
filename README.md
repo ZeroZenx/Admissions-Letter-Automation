@@ -57,10 +57,10 @@ npm run db:setup
 5. Start the app:
 
 ```bash
-npm run dev
+npm run dev -- -p 6001
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:6001](http://localhost:6001).
 
 ## Docker Setup
 
@@ -76,6 +76,8 @@ In another terminal, apply the database schema:
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/costaatt_admissions npm run db:setup
 npm run smoke
 ```
+
+The Compose stack exposes the app at [http://localhost:6001](http://localhost:6001).
 
 ## Windows VM Setup
 
