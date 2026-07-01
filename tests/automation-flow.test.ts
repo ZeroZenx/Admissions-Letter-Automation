@@ -50,6 +50,15 @@ test("letter generation writes created file names back to applicant records", as
   assert.match(source, /processed_by_flow = true/);
 });
 
+test("letter generation blocks unmapped template placeholders server-side", async () => {
+  const source = await readFile("app/api/generate-letter/route.ts", "utf8");
+
+  assert.match(source, /missingTemplateMappings\(template\.placeholders, mappings\.rows\)/);
+  assert.match(source, /throw new HttpError\(400, `Template \$\{String\(applicant\.template_type\)\} has unmapped placeholders:/);
+  assert.match(source, /const mapped = new Set\(mappings\.map\(\(mapping\) => mapping\.placeholder\)\)/);
+  assert.match(source, /placeholderNames\.filter\(\(name\) => !mapped\.has\(name\)\)/);
+});
+
 test("PDF conversion updates applicant operational PDF filename", async () => {
   const source = await readFile("app/api/convert-pdf/route.ts", "utf8");
 

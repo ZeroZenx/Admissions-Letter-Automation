@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
-import { requireAuth } from "@/lib/auth";
+import { HttpError, requireAuth } from "@/lib/auth";
 import { generateDocxFromTemplate } from "@/lib/docx-generate";
 import { buildLetterValues } from "@/lib/letter-values";
 import { convertDocxToPdf } from "@/lib/pdf-converter";
@@ -49,6 +49,10 @@ export async function POST(request: Request) {
       "SELECT placeholder, banner_field, fallback_value FROM field_mappings WHERE template_id = $1",
       [template.id]
     );
+    const missingMappings = missingTemplateMappings(template.placeholders, mappings.rows);
+    if (missingMappings.length) {
+      throw new HttpError(400, `Template ${String(applicant.template_type)} has unmapped placeholders: ${missingMappings.join(", ")}.`);
+    }
 
     const templateBuffer = await readStorageBuffer(String(template.storage_key));
     const values = buildLetterValues(applicant, mappings.rows);
@@ -113,4 +117,17 @@ export async function POST(request: Request) {
     }
     return handleApiError(error);
   }
+}
+
+function missingTemplateMappings(
+  placeholders: unknown,
+  mappings: Array<{ placeholder: string }>
+) {
+  const mapped = new Set(mappings.map((mapping) => mapping.placeholder));
+  const placeholderNames = Array.isArray(placeholders)
+    ? placeholders
+        .map((placeholder) => (placeholder && typeof placeholder === "object" && "name" in placeholder ? placeholder.name : undefined))
+        .filter((name): name is string => typeof name === "string" && name.length > 0)
+    : [];
+  return placeholderNames.filter((name) => !mapped.has(name));
 }
