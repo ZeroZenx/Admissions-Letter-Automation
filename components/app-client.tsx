@@ -20,7 +20,8 @@ import {
   authenticatedGraphFetch,
   getClientAuthState,
   logout,
-  type ClientAuthState
+  type ClientAuthState,
+  type ClientUserRole
 } from "@/lib/client-auth";
 
 type Applicant = {
@@ -183,6 +184,9 @@ export function AppClient() {
     campus: "",
     program: ""
   });
+  const userRoles = auth.status === "authenticated" ? auth.roles ?? ["Viewer"] : [];
+  const canManageWorkspace = hasAnyRole(userRoles, ["Admin", "Admissions Supervisor"]);
+  const canOperateLetters = hasAnyRole(userRoles, ["Admin", "Admissions Supervisor", "Counselor"]);
 
   useEffect(() => {
     void getClientAuthState().then(setAuth).catch((error) => {
@@ -203,9 +207,9 @@ export function AppClient() {
       authenticatedFetch("/api/generated-letters"),
       authenticatedFetch("/api/email-logs"),
       authenticatedFetch("/api/imports"),
-      authenticatedFetch("/api/audit-logs")
+      canManageWorkspace ? authenticatedFetch("/api/audit-logs") : Promise.resolve(null)
     ]);
-    const failed = [applicantRes, templateRes, generatedRes, emailLogRes, importRes, auditRes].find((response) => !response.ok);
+    const failed = [applicantRes, templateRes, generatedRes, emailLogRes, importRes, auditRes].find((response) => response && !response.ok);
     if (failed) {
       const body = await readJson<{ error?: string }>(failed);
       setMessage(body.error ?? "Some dashboard data could not be loaded. Check database and authentication settings.");
@@ -215,8 +219,8 @@ export function AppClient() {
     if (generatedRes.ok) setGeneratedLetters((await generatedRes.json()).generatedLetters);
     if (emailLogRes.ok) setEmailLogs((await emailLogRes.json()).emailLogs);
     if (importRes.ok) setImports((await importRes.json()).imports);
-    if (auditRes.ok) setAuditLogs((await auditRes.json()).auditLogs);
-  }, [auth.status, filters]);
+    if (auditRes?.ok) setAuditLogs((await auditRes.json()).auditLogs);
+  }, [auth.status, canManageWorkspace, filters]);
 
   const refreshSettings = useCallback(async () => {
     if (auth.status !== "authenticated") return;
@@ -247,6 +251,22 @@ export function AppClient() {
       invalid
     };
   }, [applicants, generatedLetters, templates]);
+  const visibleSections = useMemo(
+    () =>
+      sections.filter((section) => {
+        if (section.id === "upload" || section.id === "generate") return canOperateLetters;
+        if (section.id === "templates" || section.id === "mappings" || section.id === "audit" || section.id === "settings") {
+          return canManageWorkspace;
+        }
+        return true;
+      }),
+    [canManageWorkspace, canOperateLetters]
+  );
+
+  useEffect(() => {
+    if (auth.status !== "authenticated") return;
+    if (!visibleSections.some((section) => section.id === active)) setActive("dashboard");
+  }, [active, auth.status, visibleSections]);
 
   async function uploadImport(formData: FormData) {
     setBusy(true);
@@ -409,7 +429,7 @@ export function AppClient() {
     URL.revokeObjectURL(url);
   }
 
-  const title = sections.find((section) => section.id === active)?.label ?? "Dashboard";
+  const title = visibleSections.find((section) => section.id === active)?.label ?? "Dashboard";
   const canUseWorkspace = auth.status === "authenticated";
 
   return (
@@ -421,7 +441,7 @@ export function AppClient() {
           <p>Banner export to reviewed PDF letters</p>
         </div>
         <nav className="nav">
-          {sections.map((section) => {
+          {visibleSections.map((section) => {
             const Icon = section.icon;
             return (
               <a
@@ -465,7 +485,7 @@ export function AppClient() {
           {auth.status === "misconfigured" ? <p className="notice">{auth.error}</p> : null}
           {message ? <p className="notice">{message}</p> : null}
           {canUseWorkspace && active === "dashboard" && <Dashboard metrics={metrics} applicants={applicants} templates={templates} imports={imports} />}
-          {canUseWorkspace && active === "upload" && <UploadPage busy={busy} onUpload={uploadImport} />}
+          {canUseWorkspace && canOperateLetters && active === "upload" && <UploadPage busy={busy} onUpload={uploadImport} />}
           {canUseWorkspace && active === "applicants" && (
             <ApplicantsPage
               applicants={applicants}
@@ -473,13 +493,14 @@ export function AppClient() {
               onFilters={setFilters}
               selected={selectedApplicants}
               onSelected={setSelectedApplicants}
+              canSelect={canOperateLetters}
             />
           )}
-          {canUseWorkspace && active === "templates" && (
+          {canUseWorkspace && canManageWorkspace && active === "templates" && (
             <TemplatesPage busy={busy} templates={templates} onUpload={uploadTemplate} onStatusChange={updateTemplateStatus} />
           )}
-          {canUseWorkspace && active === "mappings" && <MappingsPage templates={templates} onSave={saveMappings} />}
-          {canUseWorkspace && active === "generate" && (
+          {canUseWorkspace && canManageWorkspace && active === "mappings" && <MappingsPage templates={templates} onSave={saveMappings} />}
+          {canUseWorkspace && canOperateLetters && active === "generate" && (
             <GeneratePage
               applicants={applicants}
               selected={selectedApplicants}
@@ -490,19 +511,33 @@ export function AppClient() {
               onDownload={downloadLetter}
               onPreview={previewLetter}
               onDownloadZip={downloadZip}
+              canDownload={canOperateLetters}
             />
           )}
           {canUseWorkspace && active === "email" && (
-            <EmailQueue generatedLetters={generatedLetters} emailLogs={emailLogs} onDownload={downloadLetter} onPreview={previewLetter} onDownloadZip={downloadZip} settings={settings} onRefresh={refresh} />
+            <EmailQueue
+              generatedLetters={generatedLetters}
+              emailLogs={emailLogs}
+              onDownload={downloadLetter}
+              onPreview={previewLetter}
+              onDownloadZip={downloadZip}
+              settings={settings}
+              onRefresh={refresh}
+              canSend={canOperateLetters}
+            />
           )}
-          {canUseWorkspace && active === "audit" && <AuditPage auditLogs={auditLogs} />}
-          {canUseWorkspace && active === "settings" && (
+          {canUseWorkspace && canManageWorkspace && active === "audit" && <AuditPage auditLogs={auditLogs} />}
+          {canUseWorkspace && canManageWorkspace && active === "settings" && (
             <SettingsPage settings={settings} onSettings={setSettings} onRefresh={refreshSettings} />
           )}
         </div>
       </main>
     </div>
   );
+}
+
+function hasAnyRole(userRoles: ClientUserRole[], allowedRoles: ClientUserRole[]) {
+  return userRoles.some((role) => allowedRoles.includes(role));
 }
 
 async function readJson<T>(response: Response): Promise<T> {
@@ -623,13 +658,15 @@ function ApplicantsPage({
   filters,
   onFilters,
   selected,
-  onSelected
+  onSelected,
+  canSelect
 }: {
   applicants: Applicant[];
   filters: ApplicantFilters;
   onFilters: (filters: ApplicantFilters) => void;
   selected: string[];
   onSelected: (ids: string[]) => void;
+  canSelect: boolean;
 }) {
   return (
     <Panel title="Applicant Records">
@@ -643,7 +680,7 @@ function ApplicantsPage({
           />
         ))}
       </div>
-      <RecordsTable applicants={applicants} selected={selected} onSelected={onSelected} />
+      <RecordsTable applicants={applicants} selected={canSelect ? selected : undefined} onSelected={canSelect ? onSelected : undefined} />
     </Panel>
   );
 }
@@ -776,7 +813,8 @@ function GeneratePage({
   generatedLetters,
   onDownload,
   onPreview,
-  onDownloadZip
+  onDownloadZip,
+  canDownload
 }: {
   applicants: Applicant[];
   selected: string[];
@@ -787,6 +825,7 @@ function GeneratePage({
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
   onPreview: (letterId: string) => void;
   onDownloadZip: (letterIds: string[]) => void;
+  canDownload: boolean;
 }) {
   return (
     <div className="grid">
@@ -797,7 +836,13 @@ function GeneratePage({
         </button>
         <RecordsTable applicants={applicants} selected={selected} onSelected={onSelected} compact />
       </Panel>
-      <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} onPreview={onPreview} onDownloadZip={onDownloadZip} />
+      <GeneratedTable
+        generatedLetters={generatedLetters}
+        onDownload={onDownload}
+        onPreview={onPreview}
+        onDownloadZip={onDownloadZip}
+        canDownload={canDownload}
+      />
     </div>
   );
 }
@@ -809,7 +854,8 @@ function EmailQueue({
   onPreview,
   onDownloadZip,
   settings,
-  onRefresh
+  onRefresh,
+  canSend
 }: {
   generatedLetters: GeneratedLetter[];
   emailLogs: EmailLog[];
@@ -818,6 +864,7 @@ function EmailQueue({
   onDownloadZip: (letterIds: string[]) => void;
   settings: AppSettings;
   onRefresh: () => Promise<void>;
+  canSend: boolean;
 }) {
   const [generatedLetterId, setGeneratedLetterId] = useState(generatedLetters[0]?.id ?? "");
   const [subject, setSubject] = useState(settings.email.defaultSubject);
@@ -856,44 +903,52 @@ function EmailQueue({
 
   return (
     <div className="grid">
-      <Panel title="Email Queue">
-        <p className="notice">Email uses Microsoft Graph and sends from the authenticated counselor mailbox.</p>
-        {message ? <p className="notice">{message}</p> : null}
-        <div className="grid two">
-          <div className="field">
-            <label>Generated letter</label>
-            <select value={generatedLetterId} onChange={(event) => setGeneratedLetterId(event.target.value)}>
-              {generatedLetters.map((letter) => (
-                <option key={letter.id} value={letter.id}>
-                  {letter.student_id} · {letter.first_name} {letter.last_name} · {letter.template_type}
-                </option>
-              ))}
-            </select>
+      {canSend ? (
+        <Panel title="Email Queue">
+          <p className="notice">Email uses Microsoft Graph and sends from the authenticated counselor mailbox.</p>
+          {message ? <p className="notice">{message}</p> : null}
+          <div className="grid two">
+            <div className="field">
+              <label>Generated letter</label>
+              <select value={generatedLetterId} onChange={(event) => setGeneratedLetterId(event.target.value)}>
+                {generatedLetters.map((letter) => (
+                  <option key={letter.id} value={letter.id}>
+                    {letter.student_id} · {letter.first_name} {letter.last_name} · {letter.template_type}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label>Subject</label>
+              <input value={subject} onChange={(event) => setSubject(event.target.value)} />
+            </div>
+            <div className="field">
+              <label>Body</label>
+              <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={5} />
+            </div>
+            <div className="field">
+              <label>Resend reason</label>
+              <textarea
+                value={resendReason}
+                onChange={(event) => setResendReason(event.target.value)}
+                rows={5}
+                placeholder="Required only when sending a letter that was already sent"
+              />
+            </div>
           </div>
-          <div className="field">
-            <label>Subject</label>
-            <input value={subject} onChange={(event) => setSubject(event.target.value)} />
-          </div>
-          <div className="field">
-            <label>Body</label>
-            <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={5} />
-          </div>
-          <div className="field">
-            <label>Resend reason</label>
-            <textarea
-              value={resendReason}
-              onChange={(event) => setResendReason(event.target.value)}
-              rows={5}
-              placeholder="Required only when sending a letter that was already sent"
-            />
-          </div>
-        </div>
-        <button className="button" disabled={busy || !generatedLetterId} onClick={sendEmail}>
-          <Mail size={16} /> Send Selected PDF
-        </button>
-      </Panel>
+          <button className="button" disabled={busy || !generatedLetterId} onClick={sendEmail}>
+            <Mail size={16} /> Send Selected PDF
+          </button>
+        </Panel>
+      ) : null}
       <EmailLogTable emailLogs={emailLogs} />
-      <GeneratedTable generatedLetters={generatedLetters} onDownload={onDownload} onPreview={onPreview} onDownloadZip={onDownloadZip} />
+      <GeneratedTable
+        generatedLetters={generatedLetters}
+        onDownload={onDownload}
+        onPreview={onPreview}
+        onDownloadZip={onDownloadZip}
+        canDownload={canSend}
+      />
     </div>
   );
 }
@@ -1144,20 +1199,24 @@ function GeneratedTable({
   generatedLetters,
   onDownload,
   onPreview,
-  onDownloadZip
+  onDownloadZip,
+  canDownload
 }: {
   generatedLetters: GeneratedLetter[];
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
   onPreview: (letterId: string) => void;
   onDownloadZip: (letterIds: string[]) => void;
+  canDownload: boolean;
 }) {
   const downloadableIds = generatedLetters.map((letter) => letter.id);
 
   return (
     <Panel title="Generated Letters">
-      <button className="button secondary" disabled={!downloadableIds.length} onClick={() => onDownloadZip(downloadableIds)}>
-        <FileArchive size={16} /> Download ZIP
-      </button>
+      {canDownload ? (
+        <button className="button secondary" disabled={!downloadableIds.length} onClick={() => onDownloadZip(downloadableIds)}>
+          <FileArchive size={16} /> Download ZIP
+        </button>
+      ) : null}
       <div className="table-wrap">
         <table>
           <thead>
@@ -1168,7 +1227,7 @@ function GeneratedTable({
               <th>Files</th>
               <th>Status</th>
               <th>Generated</th>
-              <th>Downloads</th>
+              {canDownload ? <th>Downloads</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -1188,21 +1247,23 @@ function GeneratedTable({
                   <span className={letter.pdf_ready ? "status ok" : "status"}>{letter.status}</span>
                 </td>
                 <td>{new Date(letter.generated_at).toLocaleString()}</td>
-                <td>
-                  <button className="button secondary" onClick={() => onDownload(letter.id, "docx")}>
-                    DOCX
-                  </button>{" "}
-                  {letter.pdf_ready ? (
-                    <>
-                      <button className="button secondary" onClick={() => onPreview(letter.id)}>
-                        <Eye size={16} /> Preview
-                      </button>{" "}
-                      <button className="button secondary" onClick={() => onDownload(letter.id, "pdf")}>
-                        PDF
-                      </button>
-                    </>
-                  ) : null}
-                </td>
+                {canDownload ? (
+                  <td>
+                    <button className="button secondary" onClick={() => onDownload(letter.id, "docx")}>
+                      DOCX
+                    </button>{" "}
+                    {letter.pdf_ready ? (
+                      <>
+                        <button className="button secondary" onClick={() => onPreview(letter.id)}>
+                          <Eye size={16} /> Preview
+                        </button>{" "}
+                        <button className="button secondary" onClick={() => onDownload(letter.id, "pdf")}>
+                          PDF
+                        </button>
+                      </>
+                    ) : null}
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>

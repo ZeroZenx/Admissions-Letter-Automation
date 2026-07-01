@@ -11,9 +11,13 @@ export type ClientAuthState = {
   mode: "development" | "entra";
   status: "loading" | "authenticated" | "unauthenticated" | "misconfigured";
   accountName?: string;
+  roles?: ClientUserRole[];
   error?: string;
 };
 
+export type ClientUserRole = "Admin" | "Admissions Supervisor" | "Counselor" | "Viewer";
+
+const clientUserRoles: ClientUserRole[] = ["Admin", "Admissions Supervisor", "Counselor", "Viewer"];
 let msalInstance: PublicClientApplication | null = null;
 
 const authMode = (process.env.NEXT_PUBLIC_AUTH_MODE ?? "development") as "development" | "entra";
@@ -25,7 +29,7 @@ const graphScopes = (process.env.NEXT_PUBLIC_GRAPH_SCOPES ?? "User.Read Mail.Sen
 
 export async function getClientAuthState(): Promise<ClientAuthState> {
   if (authMode === "development") {
-    return { mode: "development", status: "authenticated", accountName: "Development Admin" };
+    return { mode: "development", status: "authenticated", accountName: "Development Admin", roles: ["Admin"] };
   }
 
   if (!clientId || !tenantId || !apiScope) {
@@ -41,7 +45,7 @@ export async function getClientAuthState(): Promise<ClientAuthState> {
   const account = redirectResult?.account ?? getActiveAccount(msal);
   if (account) {
     msal.setActiveAccount(account);
-    return { mode: "entra", status: "authenticated", accountName: account.name ?? account.username };
+    return { mode: "entra", status: "authenticated", accountName: account.name ?? account.username, roles: parseClientRoles(account) };
   }
 
   return { mode: "entra", status: "unauthenticated" };
@@ -131,4 +135,12 @@ async function getMsal() {
 
 function getActiveAccount(msal: PublicClientApplication): AccountInfo | null {
   return msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null;
+}
+
+function parseClientRoles(account: AccountInfo): ClientUserRole[] {
+  const claims = account.idTokenClaims as Record<string, unknown> | undefined;
+  const claimValue = claims?.roles ?? claims?.role ?? claims?.groups;
+  const values = Array.isArray(claimValue) ? claimValue : typeof claimValue === "string" ? [claimValue] : [];
+  const parsed = values.filter((role): role is ClientUserRole => clientUserRoles.includes(role as ClientUserRole));
+  return parsed.length ? parsed : ["Viewer"];
 }
