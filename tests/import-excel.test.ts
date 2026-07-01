@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import ExcelJS from "exceljs";
+import { HttpError } from "../lib/auth";
 import { readAdmissionsWorksheet, validateBannerRow } from "../lib/import-excel";
 
 test("readAdmissionsWorksheet reads the Admissions worksheet and normalizes known Banner fields", async () => {
@@ -52,6 +53,20 @@ test("readAdmissionsWorksheet reads the Admissions worksheet and normalizes know
   assert.equal(result.rows[0].PDFFileName, "A001-UOFFER.pdf");
   assert.equal(result.rows[0].ProcessedByFlow, "true");
   assert.equal(result.rows[0].TemplateType, "UOFFER");
+});
+
+test("readAdmissionsWorksheet rejects workbooks without Admissions as a bad upload", async () => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.addWorksheet("Sheet1").addRow(["StudentID"]);
+  const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+  await assert.rejects(
+    readAdmissionsWorksheet(buffer),
+    (error) =>
+      error instanceof HttpError &&
+      error.status === 400 &&
+      error.message === "The workbook must include a worksheet named Admissions."
+  );
 });
 
 test("validateBannerRow reports all required field gaps", () => {

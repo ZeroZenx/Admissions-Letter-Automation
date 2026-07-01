@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { HttpError } from "@/lib/auth";
 import { bannerFields, bannerToDbField, requiredBannerFields } from "@/lib/banner-fields";
 
 export type ImportRow = Record<string, string>;
@@ -8,7 +9,7 @@ export async function readAdmissionsWorksheet(buffer: Buffer) {
   await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
   const worksheet = workbook.worksheets.find((sheet) => sheet.name.trim().toLowerCase() === "admissions");
   if (!worksheet) {
-    throw new Error("The workbook must include a worksheet named Admissions.");
+    throw new HttpError(400, "The workbook must include a worksheet named Admissions.");
   }
 
   const headerRow = worksheet.getRow(1);
