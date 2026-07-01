@@ -77,6 +77,10 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/costaatt_admissions npm
 npm run smoke
 ```
 
+## Windows VM Setup
+
+For installation on a Windows VM, see [docs/windows-vm-deployment.md](docs/windows-vm-deployment.md). It covers GitHub clone, Node.js, PostgreSQL, LibreOffice, `.env.local`, Windows paths, port `6001`, service setup, and Docker Desktop as an optional path.
+
 ## Validation
 
 Run the full local gate before pushing changes:

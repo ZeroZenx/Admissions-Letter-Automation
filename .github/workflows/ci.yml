@@ -74,3 +74,6 @@ jobs:
 
       - name: Audit production dependencies
         run: npm audit --omit=dev
+
+      - name: Build Docker image
+        run: docker build --tag costaatt-admissions-letter-automation:ci .
