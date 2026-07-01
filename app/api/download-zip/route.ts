@@ -5,6 +5,7 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { uniqueZipEntryName } from "@/lib/download-filenames";
 import { handleApiError } from "@/lib/http";
 import { storagePath } from "@/lib/storage";
 import { enforceApplicantOwnership, ensureDbUser } from "@/lib/user-context";
@@ -26,8 +27,9 @@ export async function POST(request: Request) {
       docx_storage_key: string;
       counselor_user_id: string | null;
       student_id: string;
+      template_type: string;
     }>(
-      `SELECT gl.id, gl.pdf_storage_key, gl.docx_storage_key, a.counselor_user_id, a.student_id
+      `SELECT gl.id, gl.pdf_storage_key, gl.docx_storage_key, a.counselor_user_id, a.student_id, a.template_type
          FROM generated_letters gl
          JOIN applicants a ON a.id = gl.applicant_id
         WHERE gl.id = ANY($1::uuid[])`,
@@ -41,12 +43,16 @@ export async function POST(request: Request) {
 
     const archive = archiver("zip", { zlib: { level: 9 } });
     const stream = new PassThrough();
+    const usedEntryNames = new Set<string>();
     archive.pipe(stream);
 
     for (const letter of result.rows) {
       enforceApplicantOwnership(user, dbUser.id, letter);
       const key = letter.pdf_storage_key ?? letter.docx_storage_key;
-      archive.file(storagePath(key), { name: `${letter.id}.${letter.pdf_storage_key ? "pdf" : "docx"}` });
+      const extension = letter.pdf_storage_key ? "pdf" : "docx";
+      archive.file(storagePath(key), {
+        name: uniqueZipEntryName(usedEntryNames, letter.student_id, letter.template_type, extension)
+      });
     }
     await audit("letters.downloaded_zip", "generated_letters", {
       generatedLetterIds: body.generatedLetterIds,

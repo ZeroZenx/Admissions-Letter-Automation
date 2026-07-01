@@ -11,6 +11,8 @@ test("download ZIP route rejects partial archives and audits bulk downloads", as
   assert.match(source, /enforceApplicantOwnership/);
   assert.match(source, /letters\.downloaded_zip/);
   assert.match(source, /fileCount: result\.rows\.length/);
+  assert.match(source, /uniqueZipEntryName/);
+  assert.match(source, /a\.template_type/);
 });
 
 test("individual download route audits downloads without returning storage paths", async () => {
@@ -21,9 +23,18 @@ test("individual download route audits downloads without returning storage paths
   assert.match(source, /letter\.downloaded/);
   assert.match(source, /fileType: type/);
   assert.match(source, /disposition = url\.searchParams\.get\("disposition"\) === "inline" \? "inline" : "attachment"/);
-  assert.match(source, /"Content-Disposition": `\$\{disposition\}; filename="\$\{id\}\.\$\{type\}"/);
+  assert.match(source, /letterDownloadFileName\(result\.rows\[0\]\.student_id, result\.rows\[0\]\.template_type, type\)/);
   assert.match(source, /return new NextResponse\(buffer/);
   assert.doesNotMatch(source, /NextResponse\.json\([^)]*storage_key/s);
+});
+
+test("letter download filenames are safe and deduplicated", async () => {
+  const source = await readFile("lib/download-filenames.ts", "utf8");
+
+  assert.match(source, /letterDownloadFileName/);
+  assert.match(source, /safeFileNamePart/);
+  assert.match(source, /uniqueZipEntryName/);
+  assert.match(source, /usedNames\.has\(candidate\)/);
 });
 
 test("generated letters table supports authenticated PDF preview", async () => {
