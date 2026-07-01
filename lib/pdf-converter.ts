@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { getPdfEnv } from "@/lib/env";
-import { storagePath } from "@/lib/storage";
+import { storageKeyFromPath, storagePath } from "@/lib/storage";
 
 const execFileAsync = promisify(execFile);
 
@@ -23,5 +23,5 @@ export async function convertDocxToPdf(docxStorageKey: string) {
   ]);
 
   const pdfPath = docxPath.replace(/\.docx$/i, ".pdf");
-  return pdfPath.replace(`${storagePath("")}${path.sep}`, "");
+  return storageKeyFromPath(pdfPath);
 }

@@ -11,11 +11,22 @@ export function storagePath(key: string) {
   const root = storageRoot();
   const normalized = normalizeStorageKey(key);
   const absolutePath = path.resolve(root, normalized);
+  assertInsideStorageRoot(root, absolutePath);
+  return absolutePath;
+}
+
+export function storageKeyFromPath(absolutePath: string) {
+  const root = storageRoot();
+  const resolvedPath = path.resolve(absolutePath);
+  assertInsideStorageRoot(root, resolvedPath);
+  return path.relative(root, resolvedPath).split(path.sep).join("/");
+}
+
+function assertInsideStorageRoot(root: string, absolutePath: string) {
   const relative = path.relative(root, absolutePath);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error("Invalid storage key.");
   }
-  return absolutePath;
 }
 
 export async function saveBuffer(area: string, originalName: string, buffer: Buffer) {

@@ -61,12 +61,14 @@ test("letter generation blocks unmapped template placeholders server-side", asyn
 
 test("PDF conversion updates applicant operational PDF filename", async () => {
   const source = await readFile("app/api/convert-pdf/route.ts", "utf8");
+  const converterSource = await readFile("lib/pdf-converter.ts", "utf8");
 
   assert.match(source, /gl\.applicant_id/);
   assert.match(source, /a\.template_type/);
   assert.match(source, /const pdfFileName = `\$\{letter\.student_id\}-\$\{letter\.template_type\}\.pdf`/);
   assert.match(source, /UPDATE applicants SET pdf_file_name = \$1, error_message = null WHERE id = \$2/);
   assert.match(source, /pdfFileName/);
+  assert.match(converterSource, /storageKeyFromPath\(pdfPath\)/);
 });
 
 test("generated letters endpoint and table expose operational file names", async () => {
