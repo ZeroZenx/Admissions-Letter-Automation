@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
+import { bannerFields } from "@/lib/banner-fields";
 import { query, withTransaction } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
+import { ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
 
@@ -12,7 +14,7 @@ const schema = z.object({
   mappings: z.array(
     z.object({
       placeholder: z.string().min(1),
-      bannerField: z.string().min(1),
+      bannerField: z.enum(bannerFields),
       fallbackValue: z.string().optional()
     })
   )
@@ -20,7 +22,8 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    await requireAuth(request, ["Admin", "Admissions Supervisor"]);
+    const user = await requireAuth(request, ["Admin", "Admissions Supervisor"]);
+    const dbUser = await ensureDbUser(user);
     const body = schema.parse(await request.json());
     await withTransaction(async (client) => {
       await client.query("DELETE FROM field_mappings WHERE template_id = $1", [body.templateId]);
@@ -36,7 +39,7 @@ export async function POST(request: Request) {
     await audit("field_mappings.updated", "templates", {
       templateId: body.templateId,
       mappingCount: body.mappings.length
-    }, body.templateId);
+    }, body.templateId, dbUser.id);
 
     const result = await query("SELECT * FROM field_mappings WHERE template_id = $1 ORDER BY placeholder", [body.templateId]);
     return NextResponse.json({ mappings: result.rows });
