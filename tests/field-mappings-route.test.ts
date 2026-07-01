@@ -12,3 +12,13 @@ test("field mapping updates validate Banner fields and audit the acting user", a
   assert.match(source, /field_mappings\.updated/);
   assert.match(source, /body\.templateId, dbUser\.id\)/);
 });
+
+test("mapping UI prefills saved mappings and fallback values", async () => {
+  const source = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(source, /fallbackValue: string \| null/);
+  assert.match(source, /const mappingsByPlaceholder = new globalThis\.Map\(template\.mappings\.map/);
+  assert.match(source, /const savedMapping = mappingsByPlaceholder\.get\(placeholder\.name\)/);
+  assert.match(source, /defaultValue=\{savedMapping\?\.bannerField \?\? defaultMappingField\(placeholder\.name\)\}/);
+  assert.match(source, /defaultValue=\{savedMapping\?\.fallbackValue \?\? ""\}/);
+});

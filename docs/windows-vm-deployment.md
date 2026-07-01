@@ -139,10 +139,8 @@ npm run smoke
 The Compose stack exposes the app on:
 
 ```text
-http://localhost:3000
+http://localhost:6001
 ```
-
-Use the native Windows setup above if port `3000` is already reserved on the VM.
 
 ## Troubleshooting
 

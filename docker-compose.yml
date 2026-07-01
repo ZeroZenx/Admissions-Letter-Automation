@@ -28,7 +28,7 @@ services:
       APP_STORAGE_DIR: /app/storage
       SOFFICE_PATH: /usr/bin/libreoffice
     ports:
-      - "3000:3000"
+      - "6001:3000"
     volumes:
       - app-storage:/app/storage
     healthcheck:

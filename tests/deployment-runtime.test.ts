@@ -15,6 +15,7 @@ test("docker compose exposes an app healthcheck", async () => {
   const compose = await readFile("docker-compose.yml", "utf8");
 
   assert.match(compose, /app:\n[\s\S]*healthcheck:/);
+  assert.match(compose, /"6001:3000"/);
   assert.match(compose, /http:\/\/127\.0\.0\.1:3000\/api\/health/);
   assert.match(compose, /start_period: 30s/);
 });

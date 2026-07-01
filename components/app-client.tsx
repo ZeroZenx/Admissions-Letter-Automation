@@ -50,7 +50,7 @@ type Template = {
   original_file_name: string;
   placeholders: Array<{ name: string; kind: string; occurrences: number }>;
   is_active: boolean;
-  mappings: Array<{ placeholder: string; bannerField: string }>;
+  mappings: Array<{ placeholder: string; bannerField: string; fallbackValue: string | null }>;
 };
 
 type GeneratedLetter = {
@@ -710,47 +710,61 @@ function MappingsPage({ templates, onSave }: { templates: Template[]; onSave: (t
     <div className="grid">
       {templates
         .filter((template) => template.is_active)
-        .map((template) => (
-          <Panel title={`${template.template_type} Field Mapping`} key={template.id}>
-            <form action={(formData) => onSave(template, formData)}>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Placeholder</th>
-                      <th>Type</th>
-                      <th>Banner Field</th>
-                      <th>Fallback</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {template.placeholders.map((placeholder) => (
-                      <tr key={placeholder.name}>
-                        <td>{placeholder.name}</td>
-                        <td>{placeholder.kind}</td>
-                        <td>
-                          <select name={placeholder.name} defaultValue={placeholder.name}>
-                            {mappableLetterFields.map((field) => (
-                              <option key={field}>{field}</option>
-                            ))}
-                          </select>
-                        </td>
-                        <td>
-                          <input name={`${placeholder.name}:fallback`} placeholder="Optional fallback" />
-                        </td>
+        .map((template) => {
+          const mappingsByPlaceholder = new globalThis.Map(template.mappings.map((mapping) => [mapping.placeholder, mapping]));
+          return (
+            <Panel title={`${template.template_type} Field Mapping`} key={template.id}>
+              <form action={(formData) => onSave(template, formData)}>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Placeholder</th>
+                        <th>Type</th>
+                        <th>Banner Field</th>
+                        <th>Fallback</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <button className="button" style={{ marginTop: 14 }}>
-                Save Mappings
-              </button>
-            </form>
-          </Panel>
-        ))}
+                    </thead>
+                    <tbody>
+                      {template.placeholders.map((placeholder) => {
+                        const savedMapping = mappingsByPlaceholder.get(placeholder.name);
+                        return (
+                          <tr key={placeholder.name}>
+                            <td>{placeholder.name}</td>
+                            <td>{placeholder.kind}</td>
+                            <td>
+                              <select name={placeholder.name} defaultValue={savedMapping?.bannerField ?? defaultMappingField(placeholder.name)}>
+                                {mappableLetterFields.map((field) => (
+                                  <option key={field}>{field}</option>
+                                ))}
+                              </select>
+                            </td>
+                            <td>
+                              <input
+                                name={`${placeholder.name}:fallback`}
+                                placeholder="Optional fallback"
+                                defaultValue={savedMapping?.fallbackValue ?? ""}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <button className="button" style={{ marginTop: 14 }}>
+                  Save Mappings
+                </button>
+              </form>
+            </Panel>
+          );
+        })}
     </div>
   );
+}
+
+function defaultMappingField(placeholderName: string) {
+  return mappableLetterFields.find((field) => field === placeholderName) ?? "StudentID";
 }
 
 function GeneratePage({
