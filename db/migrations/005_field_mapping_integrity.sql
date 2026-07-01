@@ -42,7 +42,9 @@ BEGIN
       'PDFFileName',
       'ErrorMessage',
       'ProcessedByFlow',
-      'TemplateType'
+      'TemplateType',
+      'FullName',
+      'Today'
     );
 
   IF invalid_count > 0 THEN
@@ -92,5 +94,7 @@ ALTER TABLE field_mappings
     'PDFFileName',
     'ErrorMessage',
     'ProcessedByFlow',
-    'TemplateType'
+    'TemplateType',
+    'FullName',
+    'Today'
   ));

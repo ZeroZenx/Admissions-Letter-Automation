@@ -12,11 +12,13 @@ test("buildLetterValues resolves mapped placeholders from raw Banner fields and 
       }
     },
     [
+      { placeholder: "ApplicantName", banner_field: "FullName", fallback_value: null },
       { placeholder: "ProgrammeName", banner_field: "Program", fallback_value: null },
       { placeholder: "MissingValue", banner_field: "DoesNotExist", fallback_value: "Fallback" }
     ]
   );
 
+  assert.equal(values.ApplicantName, "Maya Singh");
   assert.equal(values.ProgrammeName, "Nursing");
   assert.equal(values.MissingValue, "Fallback");
   assert.equal(values.FullName, "Maya Singh");

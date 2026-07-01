@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
-import { bannerFields } from "@/lib/banner-fields";
+import { mappableLetterFields } from "@/lib/banner-fields";
 import { query, withTransaction } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
 import { ensureDbUser } from "@/lib/user-context";
@@ -14,7 +14,7 @@ const schema = z.object({
   mappings: z.array(
     z.object({
       placeholder: z.string().min(1),
-      bannerField: z.enum(bannerFields),
+      bannerField: z.enum(mappableLetterFields),
       fallbackValue: z.string().optional()
     })
   )

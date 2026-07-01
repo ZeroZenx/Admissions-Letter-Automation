@@ -51,6 +51,18 @@ export const bannerFields = [
 
 export type BannerField = (typeof bannerFields)[number];
 
+export const derivedLetterFields = [
+  "FullName",
+  "Today"
+] as const;
+
+export const mappableLetterFields = [
+  ...bannerFields,
+  ...derivedLetterFields
+] as const;
+
+export type MappableLetterField = (typeof mappableLetterFields)[number];
+
 export const bannerToDbField: Record<BannerField, string> = {
   StudentID: "student_id",
   Term: "term",

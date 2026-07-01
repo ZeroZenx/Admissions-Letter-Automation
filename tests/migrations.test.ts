@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { bannerFields } from "../lib/banner-fields";
+import { mappableLetterFields } from "../lib/banner-fields";
 
 test("operational integrity migration guards original duplicate sends before Graph delivery", async () => {
   const sql = await readFile("db/migrations/002_operational_integrity.sql", "utf8");
@@ -42,7 +42,7 @@ test("field mapping integrity migration enforces canonical Banner fields", async
 
   assert.match(sql, /field_mappings_banner_field_chk/);
   assert.match(sql, /invalid banner_field value/);
-  for (const field of bannerFields) {
+  for (const field of mappableLetterFields) {
     assert.match(sql, new RegExp(`'${field}'`));
   }
 });

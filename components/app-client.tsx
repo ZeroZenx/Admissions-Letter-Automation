@@ -14,7 +14,7 @@ import {
   ShieldCheck,
   Upload
 } from "lucide-react";
-import { bannerFields } from "@/lib/banner-fields";
+import { mappableLetterFields } from "@/lib/banner-fields";
 import {
   authenticatedFetch,
   authenticatedGraphFetch,
@@ -730,7 +730,7 @@ function MappingsPage({ templates, onSave }: { templates: Template[]; onSave: (t
                         <td>{placeholder.kind}</td>
                         <td>
                           <select name={placeholder.name} defaultValue={placeholder.name}>
-                            {bannerFields.map((field) => (
+                            {mappableLetterFields.map((field) => (
                               <option key={field}>{field}</option>
                             ))}
                           </select>
