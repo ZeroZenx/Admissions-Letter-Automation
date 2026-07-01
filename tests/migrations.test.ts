@@ -20,6 +20,7 @@ test("database setup script includes operational integrity migration", async () 
   assert.match(packageJson.scripts["db:migrate"], /005_field_mapping_integrity\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /006_operational_status_consistency\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /007_template_type_integrity\.sql/);
+  assert.match(packageJson.scripts["db:migrate"], /008_storage_key_integrity\.sql/);
 });
 
 test("query performance migration covers operational dashboard and automation queries", async () => {
@@ -69,4 +70,15 @@ test("template type integrity migration keeps Banner and template codes aligned"
   assert.match(sql, /applicants_template_type_code_chk/);
   assert.match(sql, /\^\[A-Z0-9_-\]\{1,80\}\$/);
   assert.match(sql, /invalid template_type value/);
+});
+
+test("storage key integrity migration rejects unsafe persisted file keys", async () => {
+  const sql = await readFile("db/migrations/008_storage_key_integrity.sql", "utf8");
+
+  assert.match(sql, /CREATE OR REPLACE FUNCTION is_safe_storage_key/);
+  assert.match(sql, /templates_storage_key_safe_chk/);
+  assert.match(sql, /generated_letters_storage_keys_safe_chk/);
+  assert.match(sql, /\(\^|\/\)\\\.\\\.\(\/|\$\)/);
+  assert.match(sql, /\^\[A-Za-z\]:/);
+  assert.match(sql, /position\(E'\\\\' in value\) = 0/);
 });

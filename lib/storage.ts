@@ -31,7 +31,7 @@ function assertInsideStorageRoot(root: string, absolutePath: string) {
 
 export async function saveBuffer(area: string, originalName: string, buffer: Buffer) {
   const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const key = path.join(area, `${randomUUID()}-${safeName}`);
+  const key = `${area}/${randomUUID()}-${safeName}`;
   const absolutePath = storagePath(key);
   await mkdir(path.dirname(absolutePath), { recursive: true });
   await writeFile(absolutePath, buffer);
