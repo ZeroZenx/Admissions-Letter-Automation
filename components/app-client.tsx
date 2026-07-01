@@ -75,6 +75,8 @@ type AuditLog = {
   applicant_student_id: string | null;
   details: Record<string, unknown>;
   created_at: string;
+  actor_name: string | null;
+  actor_email: string | null;
 };
 
 type ImportRecord = {
@@ -928,6 +930,7 @@ function AuditPage({ auditLogs }: { auditLogs: AuditLog[] }) {
             <tr>
               <th>Time</th>
               <th>Action</th>
+              <th>Actor</th>
               <th>Entity</th>
               <th>StudentID</th>
               <th>Details</th>
@@ -938,6 +941,10 @@ function AuditPage({ auditLogs }: { auditLogs: AuditLog[] }) {
               <tr key={log.id}>
                 <td>{new Date(log.created_at).toLocaleString()}</td>
                 <td>{log.action}</td>
+                <td>
+                  {log.actor_name ?? "System"}
+                  {log.actor_email ? <div className="muted">{log.actor_email}</div> : null}
+                </td>
                 <td>{log.entity_type}</td>
                 <td>{log.applicant_student_id}</td>
                 <td>{JSON.stringify(log.details)}</td>

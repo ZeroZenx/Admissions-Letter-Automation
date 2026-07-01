@@ -9,9 +9,11 @@ export async function GET(request: Request) {
   try {
     await requireAuth(request, ["Admin", "Admissions Supervisor"]);
     const result = await query(
-      `SELECT id, action, entity_type, entity_id, applicant_student_id, details, created_at
-         FROM audit_logs
-         ORDER BY created_at DESC
+      `SELECT al.id, al.action, al.entity_type, al.entity_id, al.applicant_student_id, al.details, al.created_at,
+              u.display_name AS actor_name, u.email AS actor_email
+         FROM audit_logs al
+         LEFT JOIN users u ON u.id = al.user_id
+         ORDER BY al.created_at DESC
          LIMIT 500`
     );
     return NextResponse.json({ auditLogs: result.rows });
