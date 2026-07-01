@@ -18,13 +18,15 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends libreoffice-writer ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/package.json /app/package-lock.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/db ./db
-COPY --from=builder /app/scripts ./scripts
+COPY --from=builder --chown=node:node /app/.next ./.next
+COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /app/package.json /app/package-lock.json ./
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+COPY --from=builder --chown=node:node /app/db ./db
+COPY --from=builder --chown=node:node /app/scripts ./scripts
 
-RUN mkdir -p /app/storage
+RUN mkdir -p /app/storage && chown -R node:node /app/storage
+USER node
 EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(async (response) => { const body = await response.json(); process.exit(response.ok && body.ok ? 0 : 1); }).catch(() => process.exit(1))"
 CMD ["npm", "run", "start"]
