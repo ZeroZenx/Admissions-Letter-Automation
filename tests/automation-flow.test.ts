@@ -71,6 +71,17 @@ test("PDF conversion updates applicant operational PDF filename", async () => {
   assert.match(converterSource, /storageKeyFromPath\(pdfPath\)/);
 });
 
+test("PDF conversion records generated-letter and applicant failures", async () => {
+  const source = await readFile("app/api/convert-pdf/route.ts", "utf8");
+
+  assert.match(source, /let generatedLetterId: string \| undefined/);
+  assert.match(source, /failureLetter = letter/);
+  assert.match(source, /UPDATE generated_letters SET status = 'failed', error_message = \$1 WHERE id = \$2/);
+  assert.match(source, /UPDATE applicants SET error_message = \$1, processed_by_flow = false WHERE id = \$2/);
+  assert.match(source, /audit\("letter\.failed", "generated_letters"/);
+  assert.match(source, /Unknown PDF conversion failure/);
+});
+
 test("generated letters endpoint and table expose operational file names", async () => {
   const routeSource = await readFile("app/api/generated-letters/route.ts", "utf8");
   const clientSource = await readFile("components/app-client.tsx", "utf8");
