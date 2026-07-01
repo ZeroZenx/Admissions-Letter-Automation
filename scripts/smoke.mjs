@@ -8,6 +8,29 @@ const checks = [
 
 let failed = false;
 
+async function assertStaticJavaScriptChunks(checkName, html) {
+  const chunkPaths = [
+    ...html.matchAll(/(?:src|href)="(?<path>\/_next\/static\/chunks\/[^"]+\.js)"/g)
+  ]
+    .map((match) => match.groups?.path)
+    .filter(Boolean)
+    .filter((path, index, paths) => paths.indexOf(path) === index);
+
+  if (chunkPaths.length === 0) {
+    failed = true;
+    console.error(`${checkName}: no Next.js JavaScript chunks found in HTML`);
+    return;
+  }
+
+  for (const path of chunkPaths) {
+    const response = await fetch(new URL(path, baseUrl));
+    if (!response.ok) {
+      failed = true;
+      console.error(`${checkName}: static JavaScript chunk ${path} returned ${response.status}`);
+    }
+  }
+}
+
 for (const check of checks) {
   const url = new URL(check.path, baseUrl);
   const response = await fetch(url);
@@ -34,6 +57,10 @@ for (const check of checks) {
       console.error(JSON.stringify(body.checks, null, 2));
     }
     continue;
+  }
+
+  if (!check.json && typeof body === "string") {
+    await assertStaticJavaScriptChunks(check.name, body);
   }
 
   console.log(`${check.name}: ok`);
