@@ -19,6 +19,7 @@ test("database setup script includes operational integrity migration", async () 
   assert.match(packageJson.scripts["db:migrate"], /004_query_performance\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /005_field_mapping_integrity\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /006_operational_status_consistency\.sql/);
+  assert.match(packageJson.scripts["db:migrate"], /007_template_type_integrity\.sql/);
 });
 
 test("query performance migration covers operational dashboard and automation queries", async () => {
@@ -59,4 +60,13 @@ test("operational status consistency migration protects automation audit state",
   assert.match(sql, /email_logs_status_consistency_chk/);
   assert.match(sql, /status <> 'sent' OR sent_at IS NOT NULL/);
   assert.match(sql, /status <> 'pending' OR sent_at IS NULL/);
+});
+
+test("template type integrity migration keeps Banner and template codes aligned", async () => {
+  const sql = await readFile("db/migrations/007_template_type_integrity.sql", "utf8");
+
+  assert.match(sql, /templates_template_type_code_chk/);
+  assert.match(sql, /applicants_template_type_code_chk/);
+  assert.match(sql, /\^\[A-Z0-9_-\]\{1,80\}\$/);
+  assert.match(sql, /invalid template_type value/);
 });

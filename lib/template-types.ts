@@ -8,11 +8,15 @@ export function normalizeTemplateType(value: string) {
 
 export function parseTemplateType(value: string) {
   const normalized = normalizeTemplateType(value);
-  if (!templateTypePattern.test(normalized)) {
+  if (!isTemplateTypeCode(normalized)) {
     throw new HttpError(
       400,
       "templateType must contain only letters, numbers, underscores, or hyphens, and be 80 characters or fewer."
     );
   }
   return normalized;
+}
+
+export function isTemplateTypeCode(value: string) {
+  return templateTypePattern.test(value);
 }

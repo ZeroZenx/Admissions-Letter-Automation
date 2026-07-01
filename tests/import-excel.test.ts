@@ -83,3 +83,16 @@ test("validateBannerRow reports all required field gaps", () => {
 
   assert.deepEqual(errors, ["StudentID is required", "LastName is required", "Email is required"]);
 });
+
+test("readAdmissionsWorksheet normalizes and validates Banner TemplateType codes", async () => {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Admissions");
+  sheet.addRow(["StudentID", "FirstName", "LastName", "Email", "Program", "Campus", "AdmissionStatus", "TemplateType"]);
+  sheet.addRow(["A001", "Maya", "Singh", "maya@example.edu", "Nursing", "City", "Admitted", " uoffer "]);
+  const result = await readAdmissionsWorksheet(Buffer.from(await workbook.xlsx.writeBuffer()));
+
+  assert.equal(result.rows[0].TemplateType, "UOFFER");
+  assert.deepEqual(validateBannerRow({ ...result.rows[0], TemplateType: "BAD TYPE!" }), [
+    "TemplateType must contain only letters, numbers, underscores, or hyphens, and be 80 characters or fewer"
+  ]);
+});

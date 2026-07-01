@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { HttpError } from "@/lib/auth";
 import { bannerFields, bannerToDbField, requiredBannerFields } from "@/lib/banner-fields";
+import { isTemplateTypeCode, normalizeTemplateType } from "@/lib/template-types";
 
 export type ImportRow = Record<string, string>;
 
@@ -49,15 +50,20 @@ function normalizeRow(row: Record<string, unknown>): ImportRow {
   const normalized: ImportRow = {};
   for (const field of bannerFields) {
     const value = row[field];
-    normalized[field] = value == null ? "" : String(value).trim();
+    const normalizedValue = value == null ? "" : String(value).trim();
+    normalized[field] = field === "TemplateType" ? normalizeTemplateType(normalizedValue) : normalizedValue;
   }
   return normalized;
 }
 
 export function validateBannerRow(row: ImportRow) {
-  return requiredBannerFields
+  const errors = requiredBannerFields
     .filter((field) => !row[field]?.trim())
     .map((field) => `${field} is required`);
+  if (row.TemplateType?.trim() && !isTemplateTypeCode(row.TemplateType)) {
+    errors.push("TemplateType must contain only letters, numbers, underscores, or hyphens, and be 80 characters or fewer");
+  }
+  return errors;
 }
 
 export function rowToApplicantColumns(row: ImportRow, importId: string) {
