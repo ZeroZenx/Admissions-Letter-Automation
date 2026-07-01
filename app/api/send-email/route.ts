@@ -49,13 +49,18 @@ export async function POST(request: Request) {
     enforceApplicantOwnership(user, dbUser.id, letter);
     if (!letter.pdf_storage_key) return NextResponse.json({ error: "Generate the PDF before sending email." }, { status: 400 });
 
-    const sentResult = await query<{ id: string }>(
-      `SELECT id FROM email_logs
-        WHERE generated_letter_id = $1 AND status = 'sent'
+    const previousSendResult = await query<{ id: string; status: "pending" | "sent" }>(
+      `SELECT id, status FROM email_logs
+        WHERE generated_letter_id = $1 AND status IN ('pending', 'sent')
+        ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, created_at DESC
         LIMIT 1`,
       [body.generatedLetterId]
     );
-    if (sentResult.rows.length && !body.resendReason) {
+    const previousSend = previousSendResult.rows[0];
+    if (previousSend?.status === "pending") {
+      return NextResponse.json({ error: "This letter is already being sent. Wait for the pending send to finish before trying again." }, { status: 409 });
+    }
+    if (previousSend?.status === "sent" && !body.resendReason) {
       return NextResponse.json({ error: "This letter was already sent. Provide a resend reason to send again." }, { status: 409 });
     }
 

@@ -123,3 +123,14 @@ test("bulk generation can send generated PDFs and persist row-level failures", a
   assert.match(source, /emailedCount/);
   assert.match(source, /failedCount/);
 });
+
+test("email send route blocks pending duplicates before database conflicts", async () => {
+  const source = await readFile("app/api/send-email/route.ts", "utf8");
+
+  assert.match(source, /status IN \('pending', 'sent'\)/);
+  assert.match(source, /ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, created_at DESC/);
+  assert.match(source, /previousSend\?\.status === "pending"/);
+  assert.match(source, /already being sent/);
+  assert.match(source, /previousSend\?\.status === "sent" && !body\.resendReason/);
+  assert.match(source, /already sent/);
+});
