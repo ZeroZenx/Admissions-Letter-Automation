@@ -8,8 +8,14 @@ function storageRoot() {
 }
 
 export function storagePath(key: string) {
-  const normalized = path.normalize(key).replace(/^(\.\.(\/|\\|$))+/, "");
-  return path.join(storageRoot(), normalized);
+  const root = storageRoot();
+  const normalized = normalizeStorageKey(key);
+  const absolutePath = path.resolve(root, normalized);
+  const relative = path.relative(root, absolutePath);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("Invalid storage key.");
+  }
+  return absolutePath;
 }
 
 export async function saveBuffer(area: string, originalName: string, buffer: Buffer) {
@@ -23,4 +29,18 @@ export async function saveBuffer(area: string, originalName: string, buffer: Buf
 
 export async function readStorageBuffer(key: string) {
   return readFile(storagePath(key));
+}
+
+function normalizeStorageKey(key: string) {
+  if (key.includes("\0")) throw new Error("Invalid storage key.");
+  if (key === "") return "";
+  if (path.isAbsolute(key) || path.posix.isAbsolute(key) || path.win32.isAbsolute(key)) {
+    throw new Error("Invalid storage key.");
+  }
+
+  const parts = key.replace(/\\/g, "/").split("/").filter(Boolean);
+  if (parts.some((part) => part === "..")) {
+    throw new Error("Invalid storage key.");
+  }
+  return parts.join(path.sep);
 }
