@@ -51,10 +51,10 @@ export async function POST(request: Request) {
 
     const previousSendResult = await query<{ id: string; status: "pending" | "sent" }>(
       `SELECT id, status FROM email_logs
-        WHERE generated_letter_id = $1 AND status IN ('pending', 'sent')
+        WHERE applicant_id = $1 AND status IN ('pending', 'sent') AND resend_reason IS NULL
         ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, created_at DESC
         LIMIT 1`,
-      [body.generatedLetterId]
+      [letter.applicant_id]
     );
     const previousSend = previousSendResult.rows[0];
     if (previousSend?.status === "pending") {

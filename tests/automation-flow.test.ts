@@ -129,6 +129,8 @@ test("bulk generation can send generated PDFs and persist row-level failures", a
 test("email send route blocks pending duplicates before database conflicts", async () => {
   const source = await readFile("app/api/send-email/route.ts", "utf8");
 
+  assert.match(source, /WHERE applicant_id = \$1 AND status IN \('pending', 'sent'\) AND resend_reason IS NULL/);
+  assert.match(source, /\[letter\.applicant_id\]/);
   assert.match(source, /status IN \('pending', 'sent'\)/);
   assert.match(source, /ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, created_at DESC/);
   assert.match(source, /previousSend\?\.status === "pending"/);

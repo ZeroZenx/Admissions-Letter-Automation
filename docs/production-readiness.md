@@ -49,7 +49,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Health and download APIs do not expose raw storage paths.
 - Individual and ZIP generated-letter downloads are audited by generated-letter ID.
 - Database constraints enforce known import, applicant email, generated letter, and email log statuses.
-- A partial unique index blocks duplicate original email sends while allowing authorized resends with a reason.
+- Partial unique indexes block duplicate original email sends, including regenerated letters for the same applicant, while allowing authorized resends with a reason.
 - Settings changes are restricted to Admin and Admissions Supervisor roles and are audited.
 - Template activation changes are restricted to Admin and Admissions Supervisor roles and are audited.
 

@@ -21,6 +21,7 @@ test("database setup script includes operational integrity migration", async () 
   assert.match(packageJson.scripts["db:migrate"], /006_operational_status_consistency\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /007_template_type_integrity\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /008_storage_key_integrity\.sql/);
+  assert.match(packageJson.scripts["db:migrate"], /009_applicant_duplicate_send_integrity\.sql/);
 });
 
 test("query performance migration covers operational dashboard and automation queries", async () => {
@@ -81,4 +82,15 @@ test("storage key integrity migration rejects unsafe persisted file keys", async
   assert.match(sql, /\(\^|\/\)\\\.\\\.\(\/|\$\)/);
   assert.match(sql, /\^\[A-Za-z\]:/);
   assert.match(sql, /position\(E'\\\\' in value\) = 0/);
+});
+
+test("applicant duplicate send migration blocks regenerated-letter duplicates", async () => {
+  const sql = await readFile("db/migrations/009_applicant_duplicate_send_integrity.sql", "utf8");
+
+  assert.match(sql, /email_logs_one_original_applicant_send_idx/);
+  assert.match(sql, /ON email_logs\(applicant_id\)/);
+  assert.match(sql, /status IN \('pending', 'sent'\) AND resend_reason IS NULL/);
+  assert.match(sql, /GROUP BY applicant_id/);
+  assert.match(sql, /duplicate original pending\/sent emails/);
+  assert.match(sql, /DROP INDEX IF EXISTS email_logs_one_original_send_idx/);
 });
