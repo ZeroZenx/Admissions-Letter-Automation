@@ -42,12 +42,18 @@ test("imports endpoint exposes upload review metadata without storage paths", as
 test("letter generation writes created file names back to applicant records", async () => {
   const source = await readFile("app/api/generate-letter/route.ts", "utf8");
 
+  assert.match(source, /UPDATE applicants SET word_file_name = \$1 WHERE id = \$2/);
   assert.match(source, /SET word_file_name = \$1/);
   assert.match(source, /pdf_file_name = COALESCE\(\$2, pdf_file_name\)/);
   assert.match(source, /wordFileName: fileBase/);
   assert.match(source, /pdfFileName/);
   assert.match(source, /error_message = null/);
   assert.match(source, /processed_by_flow = true/);
+
+  const wordFileUpdateIndex = source.indexOf("UPDATE applicants SET word_file_name = $1 WHERE id = $2");
+  const pdfConversionIndex = source.indexOf("convertDocxToPdf(docxStorageKey)");
+  assert.ok(wordFileUpdateIndex > -1);
+  assert.ok(pdfConversionIndex > wordFileUpdateIndex);
 });
 
 test("letter generation blocks unmapped template placeholders server-side", async () => {

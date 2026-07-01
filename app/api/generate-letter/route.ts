@@ -67,6 +67,7 @@ export async function POST(request: Request) {
       [body.applicantId, template.id, docxStorageKey, dbUser.id]
     );
     letterId = letterResult.rows[0].id;
+    await query("UPDATE applicants SET word_file_name = $1 WHERE id = $2", [fileBase, body.applicantId]);
 
     let pdfStorageKey: string | null = null;
     let pdfFileName: string | null = null;
