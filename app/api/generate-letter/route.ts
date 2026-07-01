@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     );
     const template = templateResult.rows[0];
     if (!template) {
-      return NextResponse.json({ error: `No active template for ${applicant.template_type}.` }, { status: 400 });
+      throw new HttpError(400, `No active template for ${applicant.template_type}.`);
     }
 
     const mappings = await query<{ placeholder: string; banner_field: string; fallback_value: string | null }>(
@@ -114,6 +114,12 @@ export async function POST(request: Request) {
         templateType: failureTemplateType,
         error: errorMessage
       }, letterId, dbUserId).catch(() => undefined);
+    } else if (applicantId) {
+      await audit("letter.failed", "applicants", {
+        studentId: failureStudentId,
+        templateType: failureTemplateType,
+        error: errorMessage
+      }, applicantId, dbUserId).catch(() => undefined);
     }
     return handleApiError(error);
   }

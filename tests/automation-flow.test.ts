@@ -86,9 +86,12 @@ test("generated letters endpoint and table expose operational file names", async
 test("letter generation records applicant and generated-letter failures", async () => {
   const source = await readFile("app/api/generate-letter/route.ts", "utf8");
 
+  assert.match(source, /throw new HttpError\(400, `No active template for \$\{applicant\.template_type\}\.`/);
   assert.match(source, /UPDATE applicants SET error_message = \$1, processed_by_flow = false WHERE id = \$2/);
   assert.match(source, /UPDATE generated_letters SET status = 'failed', error_message = \$1 WHERE id = \$2/);
   assert.match(source, /letter\.failed/);
+  assert.match(source, /audit\("letter\.failed", "applicants"/);
+  assert.doesNotMatch(source, /return NextResponse\.json\(\{ error: `No active template/);
 });
 
 test("upload UI offers automatic document generation and displays operational columns", async () => {
