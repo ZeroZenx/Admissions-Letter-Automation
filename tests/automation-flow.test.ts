@@ -9,6 +9,24 @@ test("applicant API exposes Banner operational status and file columns", async (
   assert.match(source, /error_message, processed_by_flow, template_type/);
 });
 
+test("applicant status export returns Banner workbook with operational columns", async () => {
+  const source = await readFile("app/api/applicants/export/route.ts", "utf8");
+  const clientSource = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(source, /new ExcelJS\.Workbook\(\)/);
+  assert.match(source, /workbook\.addWorksheet\("Admissions"\)/);
+  assert.match(source, /bannerFields\.map/);
+  assert.match(source, /bannerToDbField/);
+  assert.match(source, /Content-Type": "application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet"/);
+  assert.match(source, /Content-Disposition": `attachment; filename="costaatt-admissions-status-export\.xlsx"`/);
+  assert.match(source, /counselorApplicantWhereClause/);
+  assert.match(source, /applicants\.exported/);
+  assert.doesNotMatch(source, /storage_key/);
+  assert.match(clientSource, /async function downloadApplicantExport\(\)/);
+  assert.match(clientSource, /\/api\/applicants\/export\?/);
+  assert.match(clientSource, /Export Status/);
+});
+
 test("import route returns valid applicant ids for upload-time automation", async () => {
   const source = await readFile("app/api/import/route.ts", "utf8");
 

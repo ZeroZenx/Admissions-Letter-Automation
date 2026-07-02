@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ClipboardList,
   Database,
+  Download,
   Eye,
   FileArchive,
   FileText,
@@ -429,6 +430,23 @@ export function AppClient() {
     URL.revokeObjectURL(url);
   }
 
+  async function downloadApplicantExport() {
+    const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
+    const response = await authenticatedFetch(`/api/applicants/export?${query.toString()}`);
+    if (!response.ok) {
+      const body = await readJson<{ error?: string }>(response);
+      setMessage(body.error ?? "Could not export applicant status workbook.");
+      return;
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "costaatt-admissions-status-export.xlsx";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   const title = visibleSections.find((section) => section.id === active)?.label ?? "Dashboard";
   const canUseWorkspace = auth.status === "authenticated";
 
@@ -494,6 +512,7 @@ export function AppClient() {
               selected={selectedApplicants}
               onSelected={setSelectedApplicants}
               canSelect={canOperateLetters}
+              onExport={downloadApplicantExport}
             />
           )}
           {canUseWorkspace && canManageWorkspace && active === "templates" && (
@@ -659,7 +678,8 @@ function ApplicantsPage({
   onFilters,
   selected,
   onSelected,
-  canSelect
+  canSelect,
+  onExport
 }: {
   applicants: Applicant[];
   filters: ApplicantFilters;
@@ -667,6 +687,7 @@ function ApplicantsPage({
   selected: string[];
   onSelected: (ids: string[]) => void;
   canSelect: boolean;
+  onExport: () => void;
 }) {
   return (
     <Panel title="Applicant Records">
@@ -679,6 +700,9 @@ function ApplicantsPage({
             onChange={(event) => onFilters({ ...filters, [key]: event.target.value })}
           />
         ))}
+        <button className="button secondary" onClick={onExport}>
+          <Download size={16} /> Export Status
+        </button>
       </div>
       <RecordsTable applicants={applicants} selected={canSelect ? selected : undefined} onSelected={canSelect ? onSelected : undefined} />
     </Panel>
