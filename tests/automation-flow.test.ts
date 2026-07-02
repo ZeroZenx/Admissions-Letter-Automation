@@ -196,6 +196,9 @@ test("email send route does not mark delivered mail failed when sent audit loggi
   assert.match(source, /let auditLogged = true/);
   assert.match(source, /auditLogged = false/);
   assert.match(source, /Email was sent, but audit logging failed/);
+  assert.match(source, /audit\("email\.failed", "email_logs"/);
+  assert.match(source, /emailLog\.rows\[0\]\.id, dbUser\.id\)\.catch\(\(\) => undefined\)/);
+  assert.match(source, /throw error/);
 
   const graphSendIndex = source.indexOf("await sendGraphMail(");
   const sentUpdateIndex = source.indexOf("UPDATE email_logs SET status = 'sent'");

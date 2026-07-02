@@ -112,7 +112,7 @@ export async function POST(request: Request) {
         recipient: letter.email,
         generatedLetterId: body.generatedLetterId,
         error: errorMessage
-      }, emailLog.rows[0].id, dbUser.id);
+      }, emailLog.rows[0].id, dbUser.id).catch(() => undefined);
       throw error;
     }
 
