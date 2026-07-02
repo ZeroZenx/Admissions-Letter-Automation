@@ -3,6 +3,7 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { getAuthEnv } from "@/lib/env";
 import { handleApiError } from "@/lib/http";
 import { ensureDbUser } from "@/lib/user-context";
 
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
     const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
     const dbUser = await ensureDbUser(user);
     const body = schema.parse(await request.json());
+    const authEnv = getAuthEnv();
     const origin = new URL(request.url).origin;
     const authorization = request.headers.get("authorization");
     const devRole = request.headers.get("x-dev-role");
@@ -29,7 +31,7 @@ export async function POST(request: Request) {
     if (body.sendEmail && (!body.subject || !body.body)) {
       return NextResponse.json({ error: "subject and body are required when sendEmail is true." }, { status: 400 });
     }
-    if (body.sendEmail && !graphAccessToken) {
+    if (body.sendEmail && authEnv.AUTH_MODE !== "development" && !graphAccessToken) {
       return NextResponse.json({ error: "Microsoft Graph token is required when sendEmail is true." }, { status: 401 });
     }
 

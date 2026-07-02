@@ -155,7 +155,9 @@ test("bulk generation can send generated PDFs and persist row-level failures", a
   const source = await readFile("app/api/generate-bulk/route.ts", "utf8");
 
   assert.match(source, /sendEmail: z\.boolean\(\)\.default\(false\)/);
+  assert.match(source, /const authEnv = getAuthEnv\(\)/);
   assert.match(source, /x-graph-access-token/);
+  assert.match(source, /authEnv\.AUTH_MODE !== "development" && !graphAccessToken/);
   assert.match(source, /Microsoft Graph token is required when sendEmail is true/);
   assert.match(source, /\/api\/send-email/);
   assert.match(source, /UPDATE applicants SET error_message = \$1 WHERE id = \$2/);
@@ -182,6 +184,9 @@ test("email send route blocks pending duplicates before database conflicts", asy
 test("email send route does not mark delivered mail failed when sent audit logging fails", async () => {
   const source = await readFile("app/api/send-email/route.ts", "utf8");
 
+  assert.match(source, /const authEnv = getAuthEnv\(\)/);
+  assert.match(source, /authEnv\.AUTH_MODE !== "development" && !graphAccessToken/);
+  assert.match(source, /if \(authEnv\.AUTH_MODE !== "development"\)/);
   assert.match(source, /UPDATE applicants SET email_status = 'Queued' WHERE id = \$1/);
   assert.match(source, /email\.queued/);
   assert.match(source, /UPDATE applicants SET email_status = 'Sending' WHERE id = \$1/);

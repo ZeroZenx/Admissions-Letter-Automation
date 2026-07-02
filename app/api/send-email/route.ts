@@ -3,6 +3,7 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { HttpError, requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { getAuthEnv } from "@/lib/env";
 import { sendGraphMail } from "@/lib/graph-mail";
 import { handleApiError } from "@/lib/http";
 import { uploadLimits, formatBytes } from "@/lib/request-limits";
@@ -23,8 +24,9 @@ export async function POST(request: Request) {
   try {
     const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
     const dbUser = await ensureDbUser(user);
+    const authEnv = getAuthEnv();
     const graphAccessToken = request.headers.get("x-graph-access-token") ?? user.accessToken;
-    if (!graphAccessToken) {
+    if (authEnv.AUTH_MODE !== "development" && !graphAccessToken) {
       throw new HttpError(401, "Microsoft Graph email sending requires a delegated Graph bearer token.");
     }
 
@@ -89,14 +91,17 @@ export async function POST(request: Request) {
 
     try {
       await query("UPDATE applicants SET email_status = 'Sending' WHERE id = $1", [letter.applicant_id]);
-      await sendGraphMail({
-        accessToken: graphAccessToken,
-        recipient: letter.email,
-        subject: body.subject,
-        body: sanitizedBody,
-        attachmentName: `${letter.student_id}-admissions-letter.pdf`,
-        attachmentContent: pdf
-      });
+      if (authEnv.AUTH_MODE !== "development") {
+        if (!graphAccessToken) throw new HttpError(401, "Microsoft Graph email sending requires a delegated Graph bearer token.");
+        await sendGraphMail({
+          accessToken: graphAccessToken,
+          recipient: letter.email,
+          subject: body.subject,
+          body: sanitizedBody,
+          attachmentName: `${letter.student_id}-admissions-letter.pdf`,
+          attachmentContent: pdf
+        });
+      }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown Graph send failure";
