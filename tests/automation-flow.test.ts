@@ -121,6 +121,8 @@ test("upload UI offers automatic document generation and displays operational co
   assert.match(source, /missingPlaceholderNames/);
   assert.match(source, /name="autoGenerate"/);
   assert.match(source, /name="autoSend"/);
+  assert.match(source, /<input name="autoGenerate" type="checkbox" defaultChecked \/>/);
+  assert.match(source, /<input name="autoSend" type="checkbox" defaultChecked \/>/);
   assert.match(source, /Generate DOCX\/PDF files for valid rows after import/);
   assert.match(source, /Send generated PDFs by email after import/);
   assert.match(source, /authenticatedGraphFetch/);

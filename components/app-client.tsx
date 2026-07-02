@@ -642,7 +642,7 @@ function UploadPage({ busy, onUpload }: { busy: boolean; onUpload: (formData: Fo
           Generate DOCX/PDF files for valid rows after import
         </label>
         <label className="check-row">
-          <input name="autoSend" type="checkbox" />
+          <input name="autoSend" type="checkbox" defaultChecked />
           Send generated PDFs by email after import
         </label>
         <button className="button" disabled={busy}>
