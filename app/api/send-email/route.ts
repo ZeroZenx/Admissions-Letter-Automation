@@ -82,12 +82,19 @@ export async function POST(request: Request) {
     );
 
     await query("UPDATE applicants SET email_status = 'Queued' WHERE id = $1", [letter.applicant_id]);
-    await audit("email.queued", "email_logs", {
-      studentId: letter.student_id,
-      recipient: letter.email,
-      generatedLetterId: body.generatedLetterId,
-      resend: Boolean(body.resendReason)
-    }, emailLog.rows[0].id, dbUser.id);
+    try {
+      await audit("email.queued", "email_logs", {
+        studentId: letter.student_id,
+        recipient: letter.email,
+        generatedLetterId: body.generatedLetterId,
+        resend: Boolean(body.resendReason)
+      }, emailLog.rows[0].id, dbUser.id);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Email queue audit failed.";
+      await query("UPDATE email_logs SET status = 'failed', error_message = $1 WHERE id = $2", [errorMessage, emailLog.rows[0].id]).catch(() => undefined);
+      await query("UPDATE applicants SET email_status = 'Failed', error_message = $1 WHERE id = $2", [errorMessage, letter.applicant_id]).catch(() => undefined);
+      throw error;
+    }
 
     try {
       await query("UPDATE applicants SET email_status = 'Sending' WHERE id = $1", [letter.applicant_id]);

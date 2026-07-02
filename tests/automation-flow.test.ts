@@ -189,6 +189,9 @@ test("email send route does not mark delivered mail failed when sent audit loggi
   assert.match(source, /if \(authEnv\.AUTH_MODE !== "development"\)/);
   assert.match(source, /UPDATE applicants SET email_status = 'Queued' WHERE id = \$1/);
   assert.match(source, /email\.queued/);
+  assert.match(source, /Email queue audit failed\./);
+  assert.match(source, /UPDATE email_logs SET status = 'failed', error_message = \$1 WHERE id = \$2/);
+  assert.match(source, /UPDATE applicants SET email_status = 'Failed', error_message = \$1 WHERE id = \$2/);
   assert.match(source, /UPDATE applicants SET email_status = 'Sending' WHERE id = \$1/);
   assert.match(source, /await sendGraphMail\(/);
   assert.match(source, /UPDATE email_logs SET status = 'sent', sent_at = now\(\) WHERE id = \$1/);
@@ -202,9 +205,13 @@ test("email send route does not mark delivered mail failed when sent audit loggi
 
   const graphSendIndex = source.indexOf("await sendGraphMail(");
   const sentUpdateIndex = source.indexOf("UPDATE email_logs SET status = 'sent'");
+  const queuedAuditIndex = source.indexOf('audit("email.queued"');
+  const sendingUpdateIndex = source.indexOf("UPDATE applicants SET email_status = 'Sending'");
   const catchIndex = source.indexOf("} catch (error) {", graphSendIndex);
 
   assert.ok(graphSendIndex > -1);
+  assert.ok(queuedAuditIndex > -1);
+  assert.ok(sendingUpdateIndex > queuedAuditIndex);
   assert.ok(sentUpdateIndex > graphSendIndex);
   assert.ok(catchIndex > graphSendIndex);
   assert.ok(sentUpdateIndex > catchIndex);
