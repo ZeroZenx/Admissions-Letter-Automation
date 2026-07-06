@@ -4,7 +4,7 @@ import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
 import { mappableLetterFields } from "@/lib/banner-fields";
 import { query } from "@/lib/db";
-import { detectDocxPlaceholders } from "@/lib/docx-placeholders";
+import { detectDocxPlaceholders, normalizePlaceholder } from "@/lib/docx-placeholders";
 import { handleApiError } from "@/lib/http";
 import { uploadLimits, validateFileSize } from "@/lib/request-limits";
 import { saveBuffer } from "@/lib/storage";
@@ -17,6 +17,7 @@ const statusSchema = z.object({
   templateId: z.string().uuid(),
   isActive: z.boolean()
 });
+const autoMappableFields = new Map(mappableLetterFields.map((field) => [autoMapKey(field), field]));
 
 export async function GET(request: Request) {
   try {
@@ -73,13 +74,18 @@ export async function POST(request: Request) {
        RETURNING id`,
       [name, templateType, file.name, storageKey, placeholders, dbUser.id]
     );
-    const exactMappings = placeholders.filter((placeholder) => mappableLetterFields.includes(placeholder.name as (typeof mappableLetterFields)[number]));
-    for (const mapping of exactMappings) {
+    const autoMappings = placeholders
+      .map((placeholder) => ({
+        placeholder: placeholder.name,
+        bannerField: autoMappableFields.get(autoMapKey(placeholder.name))
+      }))
+      .filter((mapping): mapping is { placeholder: string; bannerField: (typeof mappableLetterFields)[number] } => Boolean(mapping.bannerField));
+    for (const mapping of autoMappings) {
       await query(
         `INSERT INTO field_mappings (template_id, placeholder, banner_field)
-         VALUES ($1, $2, $2)
+         VALUES ($1, $2, $3)
          ON CONFLICT (template_id, placeholder) DO UPDATE SET banner_field = EXCLUDED.banner_field`,
-        [result.rows[0].id, mapping.name]
+        [result.rows[0].id, mapping.placeholder, mapping.bannerField]
       );
     }
 
@@ -87,13 +93,17 @@ export async function POST(request: Request) {
       templateType,
       originalFileName: file.name,
       placeholderCount: placeholders.length,
-      autoMappedCount: exactMappings.length
+      autoMappedCount: autoMappings.length
     }, result.rows[0].id, dbUser.id);
 
     return NextResponse.json({ id: result.rows[0].id, placeholders });
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+function autoMapKey(value: string) {
+  return normalizePlaceholder(value).replace(/_/g, "").toLowerCase();
 }
 
 export async function PATCH(request: Request) {

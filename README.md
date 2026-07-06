@@ -10,7 +10,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Review import history with uploaded filename, worksheet, status, row counts, uploader, and row-level validation errors.
 - Store imports, applicants, templates, field mappings, generated letters, and audit logs in PostgreSQL.
 - Manage DOCX templates and detect placeholders from `«FIELD_NAME»`, `{{FIELD_NAME}}`, and Word content-control placeholder text.
-- Template placeholders that exactly match Banner or derived letter fields are auto-mapped on upload.
+- Template placeholders that normalize to Banner or derived letter fields are auto-mapped on upload.
 - Activate or deactivate managed templates without deleting historical generated-letter references.
 - Map detected placeholders to Banner fields.
 - Generate completed DOCX files while preserving the original DOCX package formatting.
