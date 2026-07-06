@@ -48,6 +48,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Email HTML is sanitized before sending and logging.
 - Email Queue exposes recent send history, status, resend reasons, and errors without returning stored email bodies.
 - Health and download APIs do not expose raw storage paths.
+- Unexpected server errors return a generic response while server logs keep the detailed exception.
 - Individual and ZIP generated-letter downloads are audited by generated-letter ID.
 - Database constraints enforce known import, applicant email, generated letter, and email log statuses.
 - Partial unique indexes block duplicate original email sends, including regenerated letters for the same applicant, while allowing authorized resends with a reason.

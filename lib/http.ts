@@ -12,7 +12,7 @@ export function handleApiError(error: unknown) {
     return NextResponse.json({ error: "A conflicting record already exists." }, { status: 409 });
   }
   if (error instanceof Error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error(error);
   }
   return NextResponse.json({ error: "Unexpected server error." }, { status: 500 });
 }

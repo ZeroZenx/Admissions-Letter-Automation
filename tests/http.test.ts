@@ -18,3 +18,19 @@ test("handleApiError preserves typed bad-request errors", async () => {
   assert.equal(response.status, 400);
   assert.equal(body.error, "The workbook must include a worksheet named Admissions.");
 });
+
+test("handleApiError masks unexpected server errors", async () => {
+  const originalConsoleError = console.error;
+  console.error = () => undefined;
+
+  try {
+    const response = handleApiError(new Error("failed to read /srv/costaatt/private/generated.docx"));
+    const body = await response.json();
+
+    assert.equal(response.status, 500);
+    assert.equal(body.error, "Unexpected server error.");
+    assert.doesNotMatch(JSON.stringify(body), /\/srv\/costaatt\/private/);
+  } finally {
+    console.error = originalConsoleError;
+  }
+});
