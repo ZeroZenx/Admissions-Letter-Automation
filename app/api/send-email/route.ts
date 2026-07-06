@@ -62,6 +62,12 @@ export async function POST(request: Request) {
         RETURNING id`,
       [letter.applicant_id, stalePendingMessage]
     );
+    if (stalePendingResult.rowCount) {
+      await query("UPDATE applicants SET email_status = 'Failed', error_message = $1 WHERE id = $2", [
+        stalePendingMessage,
+        letter.applicant_id
+      ]);
+    }
     for (const stalePending of stalePendingResult.rows) {
       await audit("email.stale_failed", "email_logs", {
         studentId: letter.student_id,

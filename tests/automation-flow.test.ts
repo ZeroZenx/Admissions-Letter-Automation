@@ -177,6 +177,8 @@ test("email send route blocks pending duplicates before database conflicts", asy
 
   assert.match(source, /Pending email send timed out before completion\./);
   assert.match(source, /created_at < now\(\) - interval '30 minutes'/);
+  assert.match(source, /if \(stalePendingResult\.rowCount\)/);
+  assert.match(source, /UPDATE applicants SET email_status = 'Failed', error_message = \$1 WHERE id = \$2/);
   assert.match(source, /email\.stale_failed/);
   assert.match(source, /stalePendingResult\.rows/);
   assert.match(source, /WHERE applicant_id = \$1 AND status IN \('pending', 'sent'\) AND resend_reason IS NULL/);
