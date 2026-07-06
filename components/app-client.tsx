@@ -456,7 +456,7 @@ export function AppClient() {
         <div className="brand">
           <div className="brand-mark">C</div>
           <h1>COSTAATT Admissions Letters</h1>
-          <p>Banner export to reviewed PDF letters</p>
+          <p>Banner export to automated PDF letters</p>
         </div>
         <nav className="nav">
           {visibleSections.map((section) => {
@@ -482,10 +482,10 @@ export function AppClient() {
         <header className="topbar">
           <div>
             <h2>{title}</h2>
-            <p>Review, generate, and download admissions letters before any email is sent.</p>
+            <p>Import, generate, email, and track admissions letters from Banner source data.</p>
           </div>
           <span className="status ok">
-            <ShieldCheck size={14} /> Review required
+            <ShieldCheck size={14} /> Automation ready
           </span>
           {auth.status === "authenticated" ? (
             <button className="button secondary" onClick={() => void logout()}>
@@ -854,7 +854,7 @@ function GeneratePage({
   return (
     <div className="grid">
       <Panel title="Generate Letters">
-        <p className="muted">Select reviewed records, generate completed DOCX files, then convert to PDF before download.</p>
+        <p className="muted">Select records, generate completed DOCX files, then convert to PDF before download.</p>
         <button className="button" disabled={busy || selected.length === 0} onClick={onGenerate}>
           <FileArchive size={16} /> Generate {selected.length || ""} Selected
         </button>

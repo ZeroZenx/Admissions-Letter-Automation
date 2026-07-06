@@ -143,6 +143,10 @@ test("upload UI offers automatic document generation and displays operational co
   assert.match(source, /<input name="autoSend" type="checkbox" defaultChecked \/>/);
   assert.match(source, /Generate DOCX\/PDF files for valid rows after import/);
   assert.match(source, /Send generated PDFs by email after import/);
+  assert.match(source, /Automation ready/);
+  assert.match(source, /Import, generate, email, and track admissions letters from Banner source data\./);
+  assert.doesNotMatch(source, /Review required/);
+  assert.doesNotMatch(source, /before any email is sent/);
   assert.match(source, /authenticatedGraphFetch/);
   assert.match(source, /SentDate/);
   assert.match(source, /WordFileName/);

@@ -1,6 +1,6 @@
 # COSTAATT Admissions Letter Automation
 
-Internal Next.js application for importing Banner admissions exports, managing Word templates, generating applicant DOCX/PDF letters, and sending reviewed letters through Microsoft Graph.
+Internal Next.js application for importing Banner admissions exports, managing Word templates, generating applicant DOCX/PDF letters, and sending admissions letters through Microsoft Graph.
 
 ## MVP Included
 
