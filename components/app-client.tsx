@@ -274,53 +274,62 @@ export function AppClient() {
   async function uploadImport(formData: FormData) {
     setBusy(true);
     setMessage("");
-    const autoGenerate = formData.get("autoGenerate") === "on";
-    const autoSend = formData.get("autoSend") === "on";
-    const response = await authenticatedFetch("/api/import", { method: "POST", body: formData });
-    const body = await readJson<{
-      validRows?: number;
-      invalidRows?: number;
-      validApplicantIds?: string[];
-      preflight?: TemplatePreflight[];
-      error?: string;
-    }>(response);
-    if (!response.ok) {
-      setBusy(false);
-      setMessage(body.error ?? "Import failed.");
-      await refresh();
-      return;
-    }
+    try {
+      const autoGenerate = formData.get("autoGenerate") === "on";
+      const autoSend = formData.get("autoSend") === "on";
+      const response = await authenticatedFetch("/api/import", { method: "POST", body: formData });
+      const body = await readJson<{
+        validRows?: number;
+        invalidRows?: number;
+        validApplicantIds?: string[];
+        preflight?: TemplatePreflight[];
+        error?: string;
+      }>(response);
+      if (!response.ok) {
+        setMessage(body.error ?? "Import failed.");
+        await refresh();
+        return;
+      }
 
-    let importedMessage = `Imported ${body.validRows} valid rows. ${body.invalidRows} need review.`;
-    const blockedTemplates = body.preflight?.filter((item) => !item.ready) ?? [];
-    if (blockedTemplates.length) {
-      importedMessage = `${importedMessage} Automation preflight blocked ${blockedTemplates.map((item) => {
-        const missing = item.missingPlaceholderNames?.length ? ` (${item.missingPlaceholderNames.join(", ")})` : "";
-        return `${item.templateType}: ${item.status}${missing}`;
-      }).join(", ")}.`;
-    } else if ((autoGenerate || autoSend) && body.validApplicantIds?.length) {
-      const bulkFetch = autoSend ? authenticatedGraphFetch : authenticatedFetch;
-      const generationResponse = await bulkFetch("/api/generate-bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          applicantIds: body.validApplicantIds,
-          sendEmail: autoSend,
-          subject: settings.email.defaultSubject,
-          body: settings.email.defaultBody
-        })
-      });
-      const generationBody = await readJson<{ results?: Array<{ ok: boolean; generated?: boolean; emailed?: boolean }>; error?: string }>(generationResponse);
-      const failures = generationBody.results?.filter((result) => !result.ok).length ?? 0;
-      const generated = generationBody.results?.filter((result) => result.generated).length ?? 0;
-      const emailed = generationBody.results?.filter((result) => result.emailed).length ?? 0;
-      importedMessage = generationResponse.ok
-        ? `${importedMessage} Generated DOCX/PDF files for ${generated} records.${autoSend ? ` Sent ${emailed} emails.` : ""} ${failures} failed.`
-        : `${importedMessage} Automatic generation failed: ${generationBody.error ?? "unknown error"}.`;
+      let importedMessage = `Imported ${body.validRows} valid rows. ${body.invalidRows} need review.`;
+      const blockedTemplates = body.preflight?.filter((item) => !item.ready) ?? [];
+      if (blockedTemplates.length) {
+        importedMessage = `${importedMessage} Automation preflight blocked ${blockedTemplates.map((item) => {
+          const missing = item.missingPlaceholderNames?.length ? ` (${item.missingPlaceholderNames.join(", ")})` : "";
+          return `${item.templateType}: ${item.status}${missing}`;
+        }).join(", ")}.`;
+      } else if ((autoGenerate || autoSend) && body.validApplicantIds?.length) {
+        try {
+          const bulkFetch = autoSend ? authenticatedGraphFetch : authenticatedFetch;
+          const generationResponse = await bulkFetch("/api/generate-bulk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              applicantIds: body.validApplicantIds,
+              sendEmail: autoSend,
+              subject: settings.email.defaultSubject,
+              body: settings.email.defaultBody
+            })
+          });
+          const generationBody = await readJson<{ results?: Array<{ ok: boolean; generated?: boolean; emailed?: boolean }>; error?: string }>(generationResponse);
+          const failures = generationBody.results?.filter((result) => !result.ok).length ?? 0;
+          const generated = generationBody.results?.filter((result) => result.generated).length ?? 0;
+          const emailed = generationBody.results?.filter((result) => result.emailed).length ?? 0;
+          importedMessage = generationResponse.ok
+            ? `${importedMessage} Generated DOCX/PDF files for ${generated} records.${autoSend ? ` Sent ${emailed} emails.` : ""} ${failures} failed.`
+            : `${importedMessage} Automatic generation failed: ${generationBody.error ?? "unknown error"}.`;
+        } catch (error) {
+          importedMessage = `${importedMessage} Automatic generation failed: ${clientErrorMessage(error)}.`;
+        }
+      }
+      setMessage(importedMessage);
+      await refresh();
+    } catch (error) {
+      setMessage(clientErrorMessage(error));
+      await refresh();
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
-    setMessage(importedMessage);
-    await refresh();
   }
 
   async function uploadTemplate(formData: FormData) {
@@ -567,6 +576,10 @@ async function readJson<T>(response: Response): Promise<T> {
   } catch {
     return {} as T;
   }
+}
+
+function clientErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Automation failed.";
 }
 
 function responseDownloadFileName(response: Response, fallback: string) {

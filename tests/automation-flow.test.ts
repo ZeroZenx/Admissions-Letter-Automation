@@ -165,6 +165,17 @@ test("operator docs describe one-click source-of-truth automation", async () => 
   assert.match(checklist, /Microsoft Graph email send/);
 });
 
+test("upload automation failures release busy state and report an error", async () => {
+  const source = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(source, /async function uploadImport\(formData: FormData\)/);
+  assert.match(source, /try \{\n\s+const autoGenerate = formData\.get\("autoGenerate"\) === "on"/);
+  assert.match(source, /catch \(error\) \{\n\s+importedMessage = `\$\{importedMessage\} Automatic generation failed: \$\{clientErrorMessage\(error\)\}\.`/);
+  assert.match(source, /catch \(error\) \{\n\s+setMessage\(clientErrorMessage\(error\)\);/);
+  assert.match(source, /finally \{\n\s+setBusy\(false\);/);
+  assert.match(source, /function clientErrorMessage\(error: unknown\)/);
+});
+
 test("bulk generation can send generated PDFs and persist row-level failures", async () => {
   const source = await readFile("app/api/generate-bulk/route.ts", "utf8");
 
