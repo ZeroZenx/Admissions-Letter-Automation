@@ -387,7 +387,7 @@ export function AppClient() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `${letterId}.${type}`;
+    anchor.download = responseDownloadFileName(response, `${letterId}.${type}`);
     anchor.click();
     URL.revokeObjectURL(url);
   }
@@ -565,6 +565,16 @@ async function readJson<T>(response: Response): Promise<T> {
   } catch {
     return {} as T;
   }
+}
+
+function responseDownloadFileName(response: Response, fallback: string) {
+  const disposition = response.headers.get("Content-Disposition") ?? response.headers.get("content-disposition") ?? "";
+  const encodedMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (encodedMatch?.[1]) return decodeURIComponent(encodedMatch[1]);
+  const quotedMatch = disposition.match(/filename="([^"]+)"/i);
+  if (quotedMatch?.[1]) return quotedMatch[1];
+  const plainMatch = disposition.match(/filename=([^;]+)/i);
+  return plainMatch?.[1]?.trim() || fallback;
 }
 
 function Dashboard({
