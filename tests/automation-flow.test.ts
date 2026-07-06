@@ -139,10 +139,10 @@ test("upload UI offers automatic document generation and displays operational co
   assert.match(source, /missingPlaceholderNames/);
   assert.match(source, /name="autoGenerate"/);
   assert.match(source, /name="autoSend"/);
-  assert.match(source, /<input name="autoGenerate" type="checkbox" defaultChecked \/>/);
-  assert.match(source, /<input name="autoSend" type="checkbox" defaultChecked \/>/);
-  assert.match(source, /Generate DOCX\/PDF files for valid rows after import/);
-  assert.match(source, /Send generated PDFs by email after import/);
+  assert.match(source, /<input name="autoGenerate" type="hidden" value="on" \/>/);
+  assert.match(source, /<input name="autoSend" type="hidden" value="on" \/>/);
+  assert.match(source, /Full automation: import, generate DOCX\/PDF, send email, update status workbook\./);
+  assert.match(source, /Upload Source of Truth and Run Automation/);
   assert.match(source, /Automation ready/);
   assert.match(source, /Import, generate, email, and track admissions letters from Banner source data\./);
   assert.doesNotMatch(source, /Review required/);
@@ -153,6 +153,16 @@ test("upload UI offers automatic document generation and displays operational co
   assert.match(source, /PDFFileName/);
   assert.match(source, /ErrorMessage/);
   assert.match(source, /ProcessedByFlow/);
+});
+
+test("operator docs describe one-click source-of-truth automation", async () => {
+  const readme = await readFile("README.md", "utf8");
+  const checklist = await readFile("docs/production-readiness.md", "utf8");
+
+  assert.match(readme, /One-click upload runs full automation/);
+  assert.match(readme, /import, generate DOCX\/PDF files, send generated PDFs through Microsoft Graph/);
+  assert.match(checklist, /Confirm one-click upload runs full automation/);
+  assert.match(checklist, /Microsoft Graph email send/);
 });
 
 test("bulk generation can send generated PDFs and persist row-level failures", async () => {

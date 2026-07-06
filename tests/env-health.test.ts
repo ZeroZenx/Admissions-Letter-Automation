@@ -24,3 +24,13 @@ test("health check proves storage and PDF converter runtime readiness", async ()
   assert.match(healthSource, /checks\.storage = \{ ok: true, detail: "writable" \}/);
   assert.doesNotMatch(healthSource, /detail: storage\.APP_STORAGE_DIR/);
 });
+
+test("health check redacts path and database details from failure output", async () => {
+  const healthSource = await readFile("app/api/health/route.ts", "utf8");
+  const checklist = await readFile("docs/production-readiness.md", "utf8");
+
+  assert.match(healthSource, /redactSensitiveDetail/);
+  assert.match(healthSource, /redacted-database-url/);
+  assert.match(healthSource, /redacted-path/);
+  assert.match(checklist, /Health failure details are redacted/);
+});

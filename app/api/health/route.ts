@@ -63,7 +63,15 @@ export async function GET() {
 }
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Unknown error";
+  const message = error instanceof Error ? error.message : "Unknown error";
+  return redactSensitiveDetail(message);
+}
+
+function redactSensitiveDetail(message: string) {
+  return message
+    .replace(/postgres(?:ql)?:\/\/[^\s"'<>]+/gi, "[redacted-database-url]")
+    .replace(/[A-Z]:[\\/][^\s"'<>]+/g, "[redacted-path]")
+    .replace(/\/(?:Users|var|private|tmp|app|srv|opt|etc|home)\/[^\s"'<>]+/g, "[redacted-path]");
 }
 
 async function verifyStorageWritable() {

@@ -48,6 +48,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Email HTML is sanitized before sending and logging.
 - Email Queue exposes recent send history, status, resend reasons, and errors without returning stored email bodies.
 - Health and download APIs do not expose raw storage paths.
+- Health failure details are redacted before being returned to the browser.
 - Unexpected server errors return a generic response while server logs keep the detailed exception.
 - Individual and ZIP generated-letter downloads are audited by generated-letter ID.
 - Database constraints enforce known import, applicant email, generated letter, and email log statuses.
@@ -64,7 +65,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Upload a current Banner export and confirm invalid rows are clearly shown.
 - Confirm the dashboard Import Review panel shows uploaded file, worksheet, status, valid/invalid row counts, uploader, and row-level errors.
 - Confirm imported applicant records show `EmailStatus`, `SentDate`, `WordFileName`, `PDFFileName`, `ErrorMessage`, `ProcessedByFlow`, and `TemplateType`.
-- Confirm the upload automation option generates DOCX/PDF files for valid rows and writes file names back to applicant records.
+- Confirm one-click upload runs full automation for valid rows: import, DOCX/PDF generation, Microsoft Graph email send, and applicant status updates.
 - Confirm upload automation is blocked with a clear preflight message when a required `TemplateType` is missing, inactive, or has unmapped placeholders.
 - Confirm generation failures write applicant `ErrorMessage` values and failed generated-letter statuses.
 - Confirm the upload send option uses the authenticated Microsoft Graph mailbox, updates email status/sent dates, and records row-level errors.

@@ -139,6 +139,17 @@ a {
   padding: 28px 34px 44px;
 }
 
+.automation-summary {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--success);
+  background: var(--surface-2);
+  border-radius: 8px;
+  color: var(--text);
+  font-weight: 700;
+  margin: 12px 0 18px;
+  padding: 12px 14px;
+}
+
 .grid {
   display: grid;
   gap: 18px;

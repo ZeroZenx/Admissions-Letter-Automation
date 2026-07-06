@@ -1,4 +1,4 @@
-const baseUrl = process.env.SMOKE_BASE_URL ?? "http://127.0.0.1:6001";
+const baseUrl = process.env.SMOKE_BASE_URL ?? process.env.APP_BASE_URL ?? "http://127.0.0.1:6001";
 
 const checks = [
   { name: "home", path: "/", expectedStatus: 200, text: "COSTAATT Admissions Letters" },
@@ -35,13 +35,24 @@ for (const check of checks) {
   const url = new URL(check.path, baseUrl);
   const response = await fetch(url);
   const bodyText = await response.text();
-  const body = check.json ? JSON.parse(bodyText) : bodyText;
 
   if (response.status !== check.expectedStatus) {
     failed = true;
     console.error(`${check.name}: expected ${check.expectedStatus}, got ${response.status}`);
     console.error(bodyText.slice(0, 1000));
     continue;
+  }
+
+  let body = bodyText;
+  if (check.json) {
+    try {
+      body = JSON.parse(bodyText);
+    } catch {
+      failed = true;
+      console.error(`${check.name}: expected JSON response`);
+      console.error(bodyText.slice(0, 1000));
+      continue;
+    }
   }
 
   if (check.text && typeof body === "string" && !body.includes(check.text)) {

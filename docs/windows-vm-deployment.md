@@ -146,7 +146,7 @@ http://localhost:6001
 
 ## Troubleshooting
 
-- Blank white page: hard refresh the browser with `Ctrl+F5`, or restart the app after `npm run build` so HTML and JavaScript chunks match.
+- Blank white page or `Cannot find module './331.js'`: stop the running Next.js process, run `npm run build`, then start the app again so HTML and JavaScript chunks match.
 - Pending email stuck: check Settings stale pending send timeout, then retry after the system marks the stale send failed.
 - PDF conversion fails: confirm `SOFFICE_PATH` points to `soffice.exe` and `/api/health` reports the PDF check as healthy.
 - Storage check fails: confirm `APP_STORAGE_DIR` exists and the service account has write permission.

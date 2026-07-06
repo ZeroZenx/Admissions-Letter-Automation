@@ -11,4 +11,6 @@ test("smoke script verifies served Next.js JavaScript chunks", async () => {
   assert.match(smokeScript, /no Next\.js JavaScript chunks found/);
   assert.match(smokeScript, /static JavaScript chunk/);
   assert.match(smokeScript, /new URL\(path, baseUrl\)/);
+  assert.match(smokeScript, /process\.env\.SMOKE_BASE_URL \?\? process\.env\.APP_BASE_URL/);
+  assert.match(smokeScript, /expected JSON response/);
 });

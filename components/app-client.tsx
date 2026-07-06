@@ -668,16 +668,11 @@ function UploadPage({ busy, onUpload }: { busy: boolean; onUpload: (formData: Fo
           <label>Admissions workbook</label>
           <input name="file" type="file" accept=".xlsx,.xls" required />
         </div>
-        <label className="check-row">
-          <input name="autoGenerate" type="checkbox" defaultChecked />
-          Generate DOCX/PDF files for valid rows after import
-        </label>
-        <label className="check-row">
-          <input name="autoSend" type="checkbox" defaultChecked />
-          Send generated PDFs by email after import
-        </label>
+        <input name="autoGenerate" type="hidden" value="on" />
+        <input name="autoSend" type="hidden" value="on" />
+        <div className="automation-summary">Full automation: import, generate DOCX/PDF, send email, update status workbook.</div>
         <button className="button" disabled={busy}>
-          <Upload size={16} /> Import Admissions Worksheet
+          <Upload size={16} /> Upload Source of Truth and Run Automation
         </button>
       </form>
     </Panel>
