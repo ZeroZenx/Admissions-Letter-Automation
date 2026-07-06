@@ -585,7 +585,13 @@ function clientErrorMessage(error: unknown) {
 function responseDownloadFileName(response: Response, fallback: string) {
   const disposition = response.headers.get("Content-Disposition") ?? response.headers.get("content-disposition") ?? "";
   const encodedMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
-  if (encodedMatch?.[1]) return decodeURIComponent(encodedMatch[1]);
+  if (encodedMatch?.[1]) {
+    try {
+      return decodeURIComponent(encodedMatch[1]);
+    } catch {
+      return fallback;
+    }
+  }
   const quotedMatch = disposition.match(/filename="([^"]+)"/i);
   if (quotedMatch?.[1]) return quotedMatch[1];
   const plainMatch = disposition.match(/filename=([^;]+)/i);

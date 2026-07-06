@@ -53,6 +53,7 @@ test("letter downloads use server-provided safe filenames", async () => {
   assert.match(source, /response\.headers\.get\("Content-Disposition"\)/);
   assert.match(source, /const encodedMatch = disposition\.match/);
   assert.match(source, /decodeURIComponent\(encodedMatch\[1\]\)/);
+  assert.match(source, /catch \{\n\s+return fallback;/);
   assert.match(source, /const quotedMatch = disposition\.match/);
   assert.match(source, /const plainMatch = disposition\.match/);
   assert.match(source, /anchor\.download = responseDownloadFileName\(response, `\$\{letterId\}\.\$\{type\}`\)/);
