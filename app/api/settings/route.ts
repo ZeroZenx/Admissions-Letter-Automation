@@ -11,7 +11,8 @@ export const runtime = "nodejs";
 const schema = z.object({
   email: z.object({
     defaultSubject: z.string().trim().min(1).max(160),
-    defaultBody: z.string().trim().min(1).max(12000)
+    defaultBody: z.string().trim().min(1).max(12000),
+    stalePendingMinutes: z.coerce.number().int().min(5).max(1440)
   }),
   pdf: z.object({
     converter: z.enum(["libreoffice"])
@@ -35,7 +36,7 @@ export async function PUT(request: Request) {
     const settings = schema.parse(await request.json());
     await upsertAppSettings(settings, dbUser.id);
     await audit("settings.updated", "app_settings", {
-      keys: ["email.defaultSubject", "email.defaultBody", "pdf.converter"]
+      keys: ["email.defaultSubject", "email.defaultBody", "email.stalePendingMinutes", "pdf.converter"]
     }, undefined, dbUser.id);
     return NextResponse.json({ settings });
   } catch (error) {

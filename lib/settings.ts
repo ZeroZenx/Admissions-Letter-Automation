@@ -4,6 +4,7 @@ export type AppSettings = {
   email: {
     defaultSubject: string;
     defaultBody: string;
+    stalePendingMinutes: number;
   };
   pdf: {
     converter: string;
@@ -13,7 +14,8 @@ export type AppSettings = {
 export const defaultSettings: AppSettings = {
   email: {
     defaultSubject: "Your COSTAATT admissions letter",
-    defaultBody: "Dear applicant,<br><br>Please find your COSTAATT admissions letter attached."
+    defaultBody: "Dear applicant,<br><br>Please find your COSTAATT admissions letter attached.",
+    stalePendingMinutes: 30
   },
   pdf: {
     converter: "libreoffice"
@@ -23,6 +25,7 @@ export const defaultSettings: AppSettings = {
 const settingKeys = {
   "email.defaultSubject": defaultSettings.email.defaultSubject,
   "email.defaultBody": defaultSettings.email.defaultBody,
+  "email.stalePendingMinutes": defaultSettings.email.stalePendingMinutes,
   "pdf.converter": defaultSettings.pdf.converter
 } as const;
 
@@ -37,7 +40,8 @@ export async function getAppSettings() {
   return {
     email: {
       defaultSubject: stringifySetting(values.get("email.defaultSubject"), defaultSettings.email.defaultSubject),
-      defaultBody: stringifySetting(values.get("email.defaultBody"), defaultSettings.email.defaultBody)
+      defaultBody: stringifySetting(values.get("email.defaultBody"), defaultSettings.email.defaultBody),
+      stalePendingMinutes: numberSetting(values.get("email.stalePendingMinutes"), defaultSettings.email.stalePendingMinutes)
     },
     pdf: {
       converter: stringifySetting(values.get("pdf.converter"), defaultSettings.pdf.converter)
@@ -49,6 +53,7 @@ export async function upsertAppSettings(settings: AppSettings, updatedBy: string
   const rows: Array<[string, string]> = [
     ["email.defaultSubject", settings.email.defaultSubject],
     ["email.defaultBody", settings.email.defaultBody],
+    ["email.stalePendingMinutes", String(settings.email.stalePendingMinutes)],
     ["pdf.converter", settings.pdf.converter]
   ];
 
@@ -67,4 +72,9 @@ export async function upsertAppSettings(settings: AppSettings, updatedBy: string
 
 function stringifySetting(value: unknown, fallback: string) {
   return typeof value === "string" ? value : fallback;
+}
+
+function numberSetting(value: unknown, fallback: number) {
+  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : fallback;
 }

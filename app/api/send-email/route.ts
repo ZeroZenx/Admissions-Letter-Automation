@@ -8,6 +8,7 @@ import { sendGraphMail } from "@/lib/graph-mail";
 import { handleApiError } from "@/lib/http";
 import { uploadLimits, formatBytes } from "@/lib/request-limits";
 import { sanitizeEmailHtml } from "@/lib/sanitize";
+import { getAppSettings } from "@/lib/settings";
 import { readStorageBuffer } from "@/lib/storage";
 import { enforceApplicantOwnership, ensureDbUser } from "@/lib/user-context";
 
@@ -51,16 +52,17 @@ export async function POST(request: Request) {
     enforceApplicantOwnership(user, dbUser.id, letter);
     if (!letter.pdf_storage_key) return NextResponse.json({ error: "Generate the PDF before sending email." }, { status: 400 });
 
+    const settings = await getAppSettings();
     const stalePendingMessage = "Pending email send timed out before completion.";
     const stalePendingResult = await query<{ id: string }>(
       `UPDATE email_logs
-          SET status = 'failed', error_message = $2
+          SET status = 'failed', error_message = $3
         WHERE applicant_id = $1
           AND status = 'pending'
           AND resend_reason IS NULL
-          AND created_at < now() - interval '30 minutes'
+          AND created_at < now() - ($2::int * interval '1 minute')
         RETURNING id`,
-      [letter.applicant_id, stalePendingMessage]
+      [letter.applicant_id, settings.email.stalePendingMinutes, stalePendingMessage]
     );
     if (stalePendingResult.rowCount) {
       await query("UPDATE applicants SET email_status = 'Failed', error_message = $1 WHERE id = $2", [

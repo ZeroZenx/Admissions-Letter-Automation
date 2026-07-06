@@ -127,6 +127,7 @@ type AppSettings = {
   email: {
     defaultSubject: string;
     defaultBody: string;
+    stalePendingMinutes: number;
   };
   pdf: {
     converter: "libreoffice";
@@ -158,7 +159,8 @@ const filterKeys: Array<keyof ApplicantFilters> = ["templateType", "admissionSta
 const fallbackSettings: AppSettings = {
   email: {
     defaultSubject: "Your COSTAATT admissions letter",
-    defaultBody: "Dear applicant,<br><br>Please find your COSTAATT admissions letter attached."
+    defaultBody: "Dear applicant,<br><br>Please find your COSTAATT admissions letter attached.",
+    stalePendingMinutes: 30
   },
   pdf: {
     converter: "libreoffice"
@@ -1134,6 +1136,18 @@ function SettingsPage({
             value={draft.email.defaultBody}
             onChange={(event) => setDraft({ ...draft, email: { ...draft.email, defaultBody: event.target.value } })}
             rows={6}
+          />
+        </div>
+        <div className="field">
+          <label>Stale pending send timeout minutes</label>
+          <input
+            type="number"
+            min={5}
+            max={1440}
+            value={draft.email.stalePendingMinutes}
+            onChange={(event) =>
+              setDraft({ ...draft, email: { ...draft.email, stalePendingMinutes: Number(event.target.value) } })
+            }
           />
         </div>
       </div>

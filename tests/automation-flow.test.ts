@@ -176,7 +176,9 @@ test("email send route blocks pending duplicates before database conflicts", asy
   const source = await readFile("app/api/send-email/route.ts", "utf8");
 
   assert.match(source, /Pending email send timed out before completion\./);
-  assert.match(source, /created_at < now\(\) - interval '30 minutes'/);
+  assert.match(source, /const settings = await getAppSettings\(\)/);
+  assert.match(source, /created_at < now\(\) - \(\$2::int \* interval '1 minute'\)/);
+  assert.match(source, /settings\.email\.stalePendingMinutes/);
   assert.match(source, /if \(stalePendingResult\.rowCount\)/);
   assert.match(source, /UPDATE applicants SET email_status = 'Failed', error_message = \$1 WHERE id = \$2/);
   assert.match(source, /email\.stale_failed/);
