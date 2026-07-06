@@ -666,7 +666,7 @@ function UploadPage({ busy, onUpload }: { busy: boolean; onUpload: (formData: Fo
       <form action={onUpload}>
         <div className="field">
           <label>Admissions workbook</label>
-          <input name="file" type="file" accept=".xlsx,.xls" required />
+          <input name="file" type="file" accept=".xlsx" required />
         </div>
         <input name="autoGenerate" type="hidden" value="on" />
         <input name="autoSend" type="hidden" value="on" />

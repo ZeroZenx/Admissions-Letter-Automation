@@ -4,7 +4,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 
 ## MVP Included
 
-- Upload Banner Excel export and read the `Admissions` worksheet.
+- Upload Banner `.xlsx` Excel export and read the `Admissions` worksheet.
 - Validate required Banner fields.
 - Show Banner operational fields including `EmailStatus`, `SentDate`, `WordFileName`, `PDFFileName`, `ErrorMessage`, `ProcessedByFlow`, and `TemplateType`.
 - Review import history with uploaded filename, worksheet, status, row counts, uploader, and row-level validation errors.

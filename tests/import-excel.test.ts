@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import ExcelJS from "exceljs";
 import { HttpError } from "../lib/auth";
 import { readAdmissionsWorksheet, validateBannerRow } from "../lib/import-excel";
@@ -95,4 +96,17 @@ test("readAdmissionsWorksheet normalizes and validates Banner TemplateType codes
   assert.deepEqual(validateBannerRow({ ...result.rows[0], TemplateType: "BAD TYPE!" }), [
     "TemplateType must contain only letters, numbers, underscores, or hyphens, and be 80 characters or fewer"
   ]);
+});
+
+test("upload route and UI only accept XLSX workbooks", async () => {
+  const routeSource = await readFile("app/api/import/route.ts", "utf8");
+  const clientSource = await readFile("components/app-client.tsx", "utf8");
+  const readme = await readFile("README.md", "utf8");
+  const windowsGuide = await readFile("docs/windows-vm-deployment.md", "utf8");
+
+  assert.match(routeSource, /\/\\\.xlsx\$\/i/);
+  assert.match(routeSource, /Only \.xlsx Excel workbook uploads are allowed\./);
+  assert.match(clientSource, /accept="\.xlsx"/);
+  assert.match(readme, /Banner `\.xlsx` Excel export/);
+  assert.match(windowsGuide, /legacy `\.xls` files are not accepted/);
 });

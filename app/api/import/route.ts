@@ -19,8 +19,8 @@ export async function POST(request: Request) {
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Upload an Excel file using the file field." }, { status: 400 });
     }
-    if (!/\.(xlsx|xls)$/i.test(file.name)) {
-      return NextResponse.json({ error: "Only Excel workbook uploads are allowed." }, { status: 400 });
+    if (!/\.xlsx$/i.test(file.name)) {
+      return NextResponse.json({ error: "Only .xlsx Excel workbook uploads are allowed." }, { status: 400 });
     }
     const sizeError = validateFileSize(file, uploadLimits.excelBytes, "Banner export");
     if (sizeError) return sizeError;
