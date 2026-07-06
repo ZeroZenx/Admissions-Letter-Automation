@@ -185,12 +185,23 @@ test("bulk generation can send generated PDFs and persist row-level failures", a
   assert.match(source, /authEnv\.AUTH_MODE !== "development" && !graphAccessToken/);
   assert.match(source, /Microsoft Graph token is required when sendEmail is true/);
   assert.match(source, /\/api\/send-email/);
+  assert.match(source, /const generationResult = await readResponseJson\(response\)/);
+  assert.match(source, /result: await readResponseJson\(emailResponse\)/);
   assert.match(source, /UPDATE applicants SET error_message = \$1 WHERE id = \$2/);
   assert.match(source, /batch\.generated/);
   assert.match(source, /requestedCount/);
   assert.match(source, /generatedCount/);
   assert.match(source, /emailedCount/);
   assert.match(source, /failedCount/);
+});
+
+test("bulk generation keeps row-level failures when internal APIs return non-json", async () => {
+  const source = await readFile("app/api/generate-bulk/route.ts", "utf8");
+
+  assert.match(source, /async function readResponseJson\(response: Response\)/);
+  assert.match(source, /try \{\n\s+return await response\.json\(\);/);
+  assert.match(source, /catch \{\n\s+return \{ error: `\$\{response\.status\} \$\{response\.statusText \|\| "Non-JSON response"\}` \};/);
+  assert.match(source, /const errorMessage = readError\(failure\)/);
 });
 
 test("email send route blocks pending duplicates before database conflicts", async () => {

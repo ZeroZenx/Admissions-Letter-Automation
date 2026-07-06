@@ -45,7 +45,7 @@ export async function POST(request: Request) {
         },
         body: JSON.stringify({ applicantId, convertPdf: true })
       });
-      const generationResult = await response.json();
+      const generationResult = await readResponseJson(response);
       let emailResult: { ok: boolean; result: unknown } | null = null;
 
       if (response.ok && body.sendEmail) {
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
             body: body.body
           })
         });
-        emailResult = { ok: emailResponse.ok, result: await emailResponse.json() };
+        emailResult = { ok: emailResponse.ok, result: await readResponseJson(emailResponse) };
       }
 
       if (!response.ok || (emailResult && !emailResult.ok)) {
@@ -102,4 +102,12 @@ export async function POST(request: Request) {
 function readError(value: unknown) {
   if (value && typeof value === "object" && "error" in value && typeof value.error === "string") return value.error;
   return "Batch automation failed.";
+}
+
+async function readResponseJson(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    return { error: `${response.status} ${response.statusText || "Non-JSON response"}` };
+  }
 }
