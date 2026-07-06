@@ -28,3 +28,13 @@ test("workspace UI mirrors backend role boundaries", async () => {
   assert.match(source, /canDownload=\{canSend\}/);
   assert.match(source, /\{canDownload \? <th>Downloads<\/th> : null\}/);
 });
+
+test("workspace refresh failures are shown instead of crashing the client", async () => {
+  const source = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(source, /const refresh = useCallback\(async \(\) => \{/);
+  assert.match(source, /try \{\n\s+const query = new URLSearchParams/);
+  assert.match(source, /catch \(error\) \{\n\s+setMessage\(`Dashboard refresh failed: \$\{clientErrorMessage\(error\)\}`\);/);
+  assert.match(source, /const refreshSettings = useCallback\(async \(\) => \{/);
+  assert.match(source, /Settings could not be loaded: \$\{clientErrorMessage\(error\)\}/);
+});

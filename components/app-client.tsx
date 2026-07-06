@@ -203,36 +203,44 @@ export function AppClient() {
 
   const refresh = useCallback(async () => {
     if (auth.status !== "authenticated") return;
-    const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
-    const [applicantRes, templateRes, generatedRes, emailLogRes, importRes, auditRes] = await Promise.all([
-      authenticatedFetch(`/api/applicants?${query.toString()}`),
-      authenticatedFetch("/api/templates"),
-      authenticatedFetch("/api/generated-letters"),
-      authenticatedFetch("/api/email-logs"),
-      authenticatedFetch("/api/imports"),
-      canManageWorkspace ? authenticatedFetch("/api/audit-logs") : Promise.resolve(null)
-    ]);
-    const failed = [applicantRes, templateRes, generatedRes, emailLogRes, importRes, auditRes].find((response) => response && !response.ok);
-    if (failed) {
-      const body = await readJson<{ error?: string }>(failed);
-      setMessage(body.error ?? "Some dashboard data could not be loaded. Check database and authentication settings.");
+    try {
+      const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
+      const [applicantRes, templateRes, generatedRes, emailLogRes, importRes, auditRes] = await Promise.all([
+        authenticatedFetch(`/api/applicants?${query.toString()}`),
+        authenticatedFetch("/api/templates"),
+        authenticatedFetch("/api/generated-letters"),
+        authenticatedFetch("/api/email-logs"),
+        authenticatedFetch("/api/imports"),
+        canManageWorkspace ? authenticatedFetch("/api/audit-logs") : Promise.resolve(null)
+      ]);
+      const failed = [applicantRes, templateRes, generatedRes, emailLogRes, importRes, auditRes].find((response) => response && !response.ok);
+      if (failed) {
+        const body = await readJson<{ error?: string }>(failed);
+        setMessage(body.error ?? "Some dashboard data could not be loaded. Check database and authentication settings.");
+      }
+      if (applicantRes.ok) setApplicants((await applicantRes.json()).applicants);
+      if (templateRes.ok) setTemplates((await templateRes.json()).templates);
+      if (generatedRes.ok) setGeneratedLetters((await generatedRes.json()).generatedLetters);
+      if (emailLogRes.ok) setEmailLogs((await emailLogRes.json()).emailLogs);
+      if (importRes.ok) setImports((await importRes.json()).imports);
+      if (auditRes?.ok) setAuditLogs((await auditRes.json()).auditLogs);
+    } catch (error) {
+      setMessage(`Dashboard refresh failed: ${clientErrorMessage(error)}`);
     }
-    if (applicantRes.ok) setApplicants((await applicantRes.json()).applicants);
-    if (templateRes.ok) setTemplates((await templateRes.json()).templates);
-    if (generatedRes.ok) setGeneratedLetters((await generatedRes.json()).generatedLetters);
-    if (emailLogRes.ok) setEmailLogs((await emailLogRes.json()).emailLogs);
-    if (importRes.ok) setImports((await importRes.json()).imports);
-    if (auditRes?.ok) setAuditLogs((await auditRes.json()).auditLogs);
   }, [auth.status, canManageWorkspace, filters]);
 
   const refreshSettings = useCallback(async () => {
     if (auth.status !== "authenticated") return;
-    const response = await authenticatedFetch("/api/settings");
-    const body = await readJson<{ settings?: AppSettings; error?: string }>(response);
-    if (response.ok && body.settings) {
-      setSettings(body.settings);
-    } else if (!response.ok) {
-      setMessage(body.error ?? "Settings could not be loaded.");
+    try {
+      const response = await authenticatedFetch("/api/settings");
+      const body = await readJson<{ settings?: AppSettings; error?: string }>(response);
+      if (response.ok && body.settings) {
+        setSettings(body.settings);
+      } else if (!response.ok) {
+        setMessage(body.error ?? "Settings could not be loaded.");
+      }
+    } catch (error) {
+      setMessage(`Settings could not be loaded: ${clientErrorMessage(error)}`);
     }
   }, [auth.status]);
 
