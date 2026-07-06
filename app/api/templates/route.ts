@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
+import { mappableLetterFields } from "@/lib/banner-fields";
 import { query } from "@/lib/db";
 import { detectDocxPlaceholders } from "@/lib/docx-placeholders";
 import { handleApiError } from "@/lib/http";
@@ -72,11 +73,21 @@ export async function POST(request: Request) {
        RETURNING id`,
       [name, templateType, file.name, storageKey, placeholders, dbUser.id]
     );
+    const exactMappings = placeholders.filter((placeholder) => mappableLetterFields.includes(placeholder.name as (typeof mappableLetterFields)[number]));
+    for (const mapping of exactMappings) {
+      await query(
+        `INSERT INTO field_mappings (template_id, placeholder, banner_field)
+         VALUES ($1, $2, $2)
+         ON CONFLICT (template_id, placeholder) DO UPDATE SET banner_field = EXCLUDED.banner_field`,
+        [result.rows[0].id, mapping.name]
+      );
+    }
 
     await audit("template.upserted", "templates", {
       templateType,
       originalFileName: file.name,
-      placeholderCount: placeholders.length
+      placeholderCount: placeholders.length,
+      autoMappedCount: exactMappings.length
     }, result.rows[0].id, dbUser.id);
 
     return NextResponse.json({ id: result.rows[0].id, placeholders });

@@ -24,3 +24,16 @@ test("template uploads normalize and validate Banner template types", async () =
   assert.match(source, /const templateType = parseTemplateType\(templateTypeInput\)/);
   assert.match(source, /templateType,/);
 });
+
+test("template uploads auto-map placeholders that match Banner fields", async () => {
+  const source = await readFile("app/api/templates/route.ts", "utf8");
+  const readme = await readFile("README.md", "utf8");
+
+  assert.match(source, /import \{ mappableLetterFields \} from "@\/lib\/banner-fields"/);
+  assert.match(source, /const exactMappings = placeholders\.filter/);
+  assert.match(source, /mappableLetterFields\.includes/);
+  assert.match(source, /INSERT INTO field_mappings \(template_id, placeholder, banner_field\)/);
+  assert.match(source, /ON CONFLICT \(template_id, placeholder\) DO UPDATE SET banner_field = EXCLUDED\.banner_field/);
+  assert.match(source, /autoMappedCount: exactMappings\.length/);
+  assert.match(readme, /Template placeholders that exactly match Banner or derived letter fields are auto-mapped on upload/);
+});
