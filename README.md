@@ -131,6 +131,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Generation failures are written back to applicant error fields and generated-letter failure status.
 - Email sending can be run from the Email Queue or explicitly enabled on upload for a full import/generate/send batch.
 - Duplicate sends are blocked unless an authorized user supplies a resend reason.
+- Pending email sends older than the configured stale-send timeout are marked failed before staff can retry.
 - Email send history is visible in the Email Queue without exposing stored email bodies.
 - Raw storage paths are never returned from download APIs; files are fetched by generated-letter id.
 - ZIP downloads reject missing generated-letter IDs instead of returning partial archives.
@@ -141,4 +142,4 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Query-performance indexes cover import review, automation preflight, generated letters, and email activity.
 - Counselor ownership is enforced when `applicants.counselor_user_id` is configured.
 - Template activation changes are restricted to Admin and Admissions Supervisor roles and audited.
-- Default email content and PDF converter mode are persisted in `app_settings`.
+- Default email content, stale pending send timeout, and PDF converter mode are persisted in `app_settings`.

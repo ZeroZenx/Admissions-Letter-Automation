@@ -101,6 +101,8 @@ Check runtime readiness:
 Invoke-RestMethod http://127.0.0.1:6001/api/health
 ```
 
+After first login, open Settings and confirm default email subject/body plus stale pending send timeout. Default stale timeout is 30 minutes; valid range is 5 to 1440 minutes.
+
 ## Running as a Windows service
 
 For a durable VM installation, run the app under a Windows service manager such as NSSM, WinSW, or a managed IIS reverse proxy process.
@@ -145,6 +147,7 @@ http://localhost:6001
 ## Troubleshooting
 
 - Blank white page: hard refresh the browser with `Ctrl+F5`, or restart the app after `npm run build` so HTML and JavaScript chunks match.
+- Pending email stuck: check Settings stale pending send timeout, then retry after the system marks the stale send failed.
 - PDF conversion fails: confirm `SOFFICE_PATH` points to `soffice.exe` and `/api/health` reports the PDF check as healthy.
 - Storage check fails: confirm `APP_STORAGE_DIR` exists and the service account has write permission.
 - Database check fails: confirm `DATABASE_URL`, PostgreSQL service status, firewall rules, and credentials.
