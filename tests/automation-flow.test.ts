@@ -175,6 +175,10 @@ test("bulk generation can send generated PDFs and persist row-level failures", a
 test("email send route blocks pending duplicates before database conflicts", async () => {
   const source = await readFile("app/api/send-email/route.ts", "utf8");
 
+  assert.match(source, /Pending email send timed out before completion\./);
+  assert.match(source, /created_at < now\(\) - interval '30 minutes'/);
+  assert.match(source, /email\.stale_failed/);
+  assert.match(source, /stalePendingResult\.rows/);
   assert.match(source, /WHERE applicant_id = \$1 AND status IN \('pending', 'sent'\) AND resend_reason IS NULL/);
   assert.match(source, /\[letter\.applicant_id\]/);
   assert.match(source, /status IN \('pending', 'sent'\)/);
@@ -183,6 +187,11 @@ test("email send route blocks pending duplicates before database conflicts", asy
   assert.match(source, /already being sent/);
   assert.match(source, /previousSend\?\.status === "sent" && !body\.resendReason/);
   assert.match(source, /already sent/);
+
+  const staleCleanupIndex = source.indexOf("Pending email send timed out before completion.");
+  const duplicateCheckIndex = source.indexOf("SELECT id, status FROM email_logs");
+  assert.ok(staleCleanupIndex > -1);
+  assert.ok(duplicateCheckIndex > staleCleanupIndex);
 });
 
 test("email send route does not mark delivered mail failed when sent audit logging fails", async () => {

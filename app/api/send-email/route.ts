@@ -51,6 +51,26 @@ export async function POST(request: Request) {
     enforceApplicantOwnership(user, dbUser.id, letter);
     if (!letter.pdf_storage_key) return NextResponse.json({ error: "Generate the PDF before sending email." }, { status: 400 });
 
+    const stalePendingMessage = "Pending email send timed out before completion.";
+    const stalePendingResult = await query<{ id: string }>(
+      `UPDATE email_logs
+          SET status = 'failed', error_message = $2
+        WHERE applicant_id = $1
+          AND status = 'pending'
+          AND resend_reason IS NULL
+          AND created_at < now() - interval '30 minutes'
+        RETURNING id`,
+      [letter.applicant_id, stalePendingMessage]
+    );
+    for (const stalePending of stalePendingResult.rows) {
+      await audit("email.stale_failed", "email_logs", {
+        studentId: letter.student_id,
+        recipient: letter.email,
+        generatedLetterId: body.generatedLetterId,
+        error: stalePendingMessage
+      }, stalePending.id, dbUser.id).catch(() => undefined);
+    }
+
     const previousSendResult = await query<{ id: string; status: "pending" | "sent" }>(
       `SELECT id, status FROM email_logs
         WHERE applicant_id = $1 AND status IN ('pending', 'sent') AND resend_reason IS NULL
