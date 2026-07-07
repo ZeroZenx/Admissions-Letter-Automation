@@ -833,6 +833,8 @@ function ApplicantsPage({
   canSelect: boolean;
   onExport: () => void;
 }) {
+  const visibleSelectedCount = applicants.filter((applicant) => selected.includes(applicant.id)).length;
+
   return (
     <Panel title="Applicant Records">
       <div className="filters">
@@ -848,6 +850,14 @@ function ApplicantsPage({
           <Download size={16} /> Export Status
         </button>
       </div>
+      {canSelect ? (
+        <SelectionSummary
+          selectedCount={selected.length}
+          visibleSelectedCount={visibleSelectedCount}
+          visibleCount={applicants.length}
+          onClear={() => onSelected([])}
+        />
+      ) : null}
       <RecordsTable applicants={applicants} selected={canSelect ? selected : undefined} onSelected={canSelect ? onSelected : undefined} />
       <PaginationControls page={page} loadedCount={applicants.length} onPage={onPage} />
     </Panel>
@@ -1000,10 +1010,22 @@ function GeneratePage({
   onDownloadZip: (letterIds: string[]) => void;
   canDownload: boolean;
 }) {
+  const visibleSelectedCount = applicants.filter((applicant) => selected.includes(applicant.id)).length;
+  const hiddenSelectedCount = selected.length - visibleSelectedCount;
+
   return (
     <div className="grid">
       <Panel title="Generate Letters">
         <p className="muted">Select records, generate completed DOCX files, then convert to PDF before download.</p>
+        <SelectionSummary
+          selectedCount={selected.length}
+          visibleSelectedCount={visibleSelectedCount}
+          visibleCount={applicants.length}
+          onClear={() => onSelected([])}
+        />
+        {hiddenSelectedCount > 0 ? (
+          <p className="notice">{hiddenSelectedCount} selected record{hiddenSelectedCount === 1 ? "" : "s"} are outside the current page or filters.</p>
+        ) : null}
         <button className="button" disabled={busy || selected.length === 0} onClick={onGenerate}>
           <FileArchive size={16} /> Generate {selected.length || ""} Selected
         </button>
@@ -1320,9 +1342,22 @@ function RecordsTable({
   selected?: string[];
   onSelected?: (ids: string[]) => void;
 }) {
+  const visibleIds = applicants.map((applicant) => applicant.id);
+  const visibleSelectedCount = selected ? visibleIds.filter((id) => selected.includes(id)).length : 0;
+  const allVisibleSelected = Boolean(selected && visibleIds.length && visibleSelectedCount === visibleIds.length);
+
   function toggle(id: string) {
     if (!selected || !onSelected) return;
     onSelected(selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id]);
+  }
+
+  function toggleVisible() {
+    if (!selected || !onSelected) return;
+    if (allVisibleSelected) {
+      onSelected(selected.filter((id) => !visibleIds.includes(id)));
+      return;
+    }
+    onSelected([...selected, ...visibleIds.filter((id) => !selected.includes(id))]);
   }
 
   return (
@@ -1330,7 +1365,16 @@ function RecordsTable({
       <table>
         <thead>
           <tr>
-            {selected ? <th>Select</th> : null}
+            {selected ? (
+              <th>
+                <input
+                  type="checkbox"
+                  aria-label="Select all visible applicants"
+                  checked={allVisibleSelected}
+                  onChange={toggleVisible}
+                />
+              </th>
+            ) : null}
             <th>StudentID</th>
             <th>Name</th>
             <th>Program</th>
@@ -1390,6 +1434,32 @@ function RecordsTable({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function SelectionSummary({
+  selectedCount,
+  visibleSelectedCount,
+  visibleCount,
+  onClear
+}: {
+  selectedCount: number;
+  visibleSelectedCount: number;
+  visibleCount: number;
+  onClear: () => void;
+}) {
+  const hiddenSelectedCount = selectedCount - visibleSelectedCount;
+
+  return (
+    <div className="selection-summary">
+      <span>
+        {selectedCount} selected · {visibleSelectedCount}/{visibleCount} visible
+        {hiddenSelectedCount > 0 ? ` · ${hiddenSelectedCount} outside current view` : ""}
+      </span>
+      <button className="button secondary" disabled={selectedCount === 0} onClick={onClear}>
+        Clear Selection
+      </button>
     </div>
   );
 }

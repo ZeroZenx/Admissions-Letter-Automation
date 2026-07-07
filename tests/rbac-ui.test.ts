@@ -51,6 +51,22 @@ test("workspace UI exposes bounded pagination controls for list pages", async ()
   assert.match(styles, /\.icon-button/);
 });
 
+test("workspace UI makes cross-page applicant selection explicit", async () => {
+  const source = await readFile("components/app-client.tsx", "utf8");
+  const styles = await readFile("app/globals.css", "utf8");
+
+  assert.match(source, /function SelectionSummary/);
+  assert.match(source, /visibleSelectedCount = applicants\.filter\(\(applicant\) => selected\.includes\(applicant\.id\)\)\.length/);
+  assert.match(source, /hiddenSelectedCount = selected\.length - visibleSelectedCount/);
+  assert.match(source, /outside the current page or filters/);
+  assert.match(source, /aria-label="Select all visible applicants"/);
+  assert.match(source, /function toggleVisible\(\)/);
+  assert.match(source, /onSelected\(\[\.{3}selected, \.{3}visibleIds\.filter\(\(id\) => !selected\.includes\(id\)\)\]\)/);
+  assert.match(source, /onSelected\(selected\.filter\(\(id\) => !visibleIds\.includes\(id\)\)\)/);
+  assert.match(source, /Clear Selection/);
+  assert.match(styles, /\.selection-summary/);
+});
+
 test("workspace refresh failures are shown instead of crashing the client", async () => {
   const source = await readFile("components/app-client.tsx", "utf8");
 
