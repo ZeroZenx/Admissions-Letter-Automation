@@ -57,6 +57,15 @@ test("imports endpoint exposes upload review metadata without storage paths", as
   assert.doesNotMatch(source, /storage_key/);
 });
 
+test("import history tolerates malformed stored error details", async () => {
+  const source = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(source, /function formatImportErrors\(errors: unknown\)/);
+  assert.match(source, /if \(!Array\.isArray\(errors\)\) return ""/);
+  assert.match(source, /formatImportErrors\(record\.errors\)/);
+  assert.doesNotMatch(source, /record\.errors\?\.slice/);
+});
+
 test("letter generation writes created file names back to applicant records", async () => {
   const source = await readFile("app/api/generate-letter/route.ts", "utf8");
 

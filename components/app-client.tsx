@@ -90,7 +90,7 @@ type ImportRecord = {
   valid_rows: number;
   invalid_rows: number;
   status: "review" | "imported" | "failed";
-  errors: Array<{ rowNumber: number; studentId?: string; errors: string[] }>;
+  errors: unknown;
   imported_by_name: string | null;
   imported_by_email: string | null;
 };
@@ -606,6 +606,21 @@ function responseDownloadFileName(response: Response, fallback: string) {
   return plainMatch?.[1]?.trim() || fallback;
 }
 
+function formatImportErrors(errors: unknown) {
+  if (!Array.isArray(errors)) return "";
+  return errors
+    .slice(0, 3)
+    .map((error) => {
+      if (!error || typeof error !== "object") return "";
+      const row = error as Record<string, unknown>;
+      const rowNumber = typeof row.rowNumber === "number" || typeof row.rowNumber === "string" ? row.rowNumber : "unknown";
+      const messages = Array.isArray(row.errors) ? row.errors.map(String).filter(Boolean) : [];
+      return messages.length ? `Row ${rowNumber}: ${messages.join(", ")}` : "";
+    })
+    .filter(Boolean)
+    .join(" | ");
+}
+
 function Dashboard({
   metrics,
   applicants,
@@ -677,7 +692,7 @@ function ImportHistory({ imports }: { imports: ImportRecord[] }) {
                   <div className="muted">{record.invalid_rows} need review</div>
                 </td>
                 <td>{record.imported_by_name ?? record.imported_by_email ?? ""}</td>
-                <td>{record.errors?.slice(0, 3).map((error) => `Row ${error.rowNumber}: ${error.errors.join(", ")}`).join(" | ")}</td>
+                <td>{formatImportErrors(record.errors)}</td>
               </tr>
             ))}
           </tbody>

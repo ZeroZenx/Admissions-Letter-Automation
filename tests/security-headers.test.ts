@@ -8,6 +8,8 @@ test("CSP allows Next.js app router bootstrap scripts", async () => {
   assert.match(source, /script-src 'self' 'unsafe-inline'/);
   assert.match(source, /frame-ancestors 'none'/);
   assert.match(source, /connect-src 'self' https:\/\/login\.microsoftonline\.com https:\/\/graph\.microsoft\.com/);
+  assert.match(source, /Strict-Transport-Security/);
+  assert.match(source, /max-age=31536000; includeSubDomains/);
 });
 
 test("Next.js powered-by header is disabled", async () => {

@@ -41,7 +41,7 @@ Use this checklist before enabling COSTAATT staff access.
 
 ## Security Controls
 
-- Security headers are applied by `middleware.ts`, including CSP, frame blocking, content-type sniffing protection, referrer policy, and permissions policy.
+- Security headers are applied by `middleware.ts`, including CSP, frame blocking, content-type sniffing protection, referrer policy, HSTS, and permissions policy.
 - The framework powered-by header is disabled.
 - Banner Excel uploads are limited to 10 MB.
 - DOCX template uploads are limited to 15 MB.
