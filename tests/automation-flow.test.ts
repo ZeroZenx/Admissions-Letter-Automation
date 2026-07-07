@@ -33,9 +33,22 @@ test("import route returns valid applicant ids for upload-time automation", asyn
   assert.match(source, /validApplicantIds/);
   assert.match(source, /buildAutomationPreflight/);
   assert.match(source, /preflight/);
-  assert.match(source, /if \(validateBannerRow\(row\)\.length\) continue/);
+  assert.match(source, /invalidRowNumbers/);
+  assert.match(source, /if \(invalidRowNumbers\.has\(index \+ 2\)\) continue/);
   assert.match(source, /invalidRows\.length \? "review" : "imported"/);
   assert.match(source, /validation_errors = '\[\]'::jsonb/);
+});
+
+test("import route rejects duplicate applicant template rows before insertion", async () => {
+  const source = await readFile("app/api/import/route.ts", "utf8");
+
+  assert.match(source, /findDuplicateApplicantKeys\(workbook\.rows\)/);
+  assert.match(source, /applicantDuplicateKey\(row\)/);
+  assert.match(source, /Duplicate StudentID and TemplateType in workbook/);
+  assert.match(source, /invalidRowNumbers/);
+  assert.match(source, /for \(const \[index, row\] of workbook\.rows\.entries\(\)\)/);
+  assert.match(source, /if \(invalidRowNumbers\.has\(index \+ 2\)\) continue/);
+  assert.match(source, /studentId && templateType \? `\$\{studentId\}\\u0000\$\{templateType\}` : ""/);
 });
 
 test("import automation preflight checks template readiness before generation", async () => {

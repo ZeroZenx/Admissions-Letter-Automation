@@ -28,12 +28,21 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     await saveBuffer("imports", file.name, buffer);
     const workbook = await readAdmissionsWorksheet(buffer);
-    const rowErrors = workbook.rows.map((row, index) => ({
-      rowNumber: index + 2,
-      studentId: row.StudentID,
-      errors: validateBannerRow(row)
-    }));
+    const duplicateKeys = findDuplicateApplicantKeys(workbook.rows);
+    const rowErrors = workbook.rows.map((row, index) => {
+      const errors = validateBannerRow(row);
+      const key = applicantDuplicateKey(row);
+      if (key && duplicateKeys.has(key)) {
+        errors.push("Duplicate StudentID and TemplateType in workbook");
+      }
+      return {
+        rowNumber: index + 2,
+        studentId: row.StudentID,
+        errors
+      };
+    });
     const invalidRows = rowErrors.filter((row) => row.errors.length > 0);
+    const invalidRowNumbers = new Set(invalidRows.map((row) => row.rowNumber));
 
     const importRecord = await withTransaction(async (client) => {
       const importResult = await client.query<{ id: string }>(
@@ -52,8 +61,8 @@ export async function POST(request: Request) {
       );
 
       const importId = importResult.rows[0].id;
-      for (const row of workbook.rows) {
-        if (validateBannerRow(row).length) continue;
+      for (const [index, row] of workbook.rows.entries()) {
+        if (invalidRowNumbers.has(index + 2)) continue;
         const { columns, values } = rowToApplicantColumns(row, importId);
         const placeholders = values.map((_value, index) => `$${index + 1}`).join(", ");
         await client.query(
@@ -94,6 +103,21 @@ export async function POST(request: Request) {
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+function findDuplicateApplicantKeys(rows: Array<Record<string, string>>) {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const key = applicantDuplicateKey(row);
+    if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return new Set([...counts.entries()].filter(([, count]) => count > 1).map(([key]) => key));
+}
+
+function applicantDuplicateKey(row: Record<string, string>) {
+  const studentId = row.StudentID?.trim();
+  const templateType = row.TemplateType?.trim();
+  return studentId && templateType ? `${studentId}\u0000${templateType}` : "";
 }
 
 async function buildAutomationPreflight(importId: string) {

@@ -64,6 +64,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Deactivate obsolete seed or retired templates and confirm they are not available for new field mappings or generation.
 - Map every detected placeholder to a Banner field or fallback.
 - Upload a current Banner export and confirm invalid rows are clearly shown.
+- Confirm duplicate `StudentID` plus `TemplateType` rows in a Banner export are flagged as row-level errors and are not silently imported.
 - Confirm the dashboard Import Review panel shows uploaded file, worksheet, status, valid/invalid row counts, uploader, and row-level errors.
 - Confirm imported applicant records show `EmailStatus`, `SentDate`, `WordFileName`, `PDFFileName`, `ErrorMessage`, `ProcessedByFlow`, and `TemplateType`.
 - Confirm one-click upload runs full automation for valid rows: import, DOCX/PDF generation, Microsoft Graph email send, and applicant status updates.
