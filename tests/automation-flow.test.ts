@@ -239,6 +239,24 @@ test("email send route blocks pending duplicates before database conflicts", asy
   assert.ok(duplicateCheckIndex > staleCleanupIndex);
 });
 
+test("email send route records missing generated PDFs before sending", async () => {
+  const source = await readFile("app/api/send-email/route.ts", "utf8");
+
+  assert.match(source, /storageFileExists\(letter\.pdf_storage_key\)/);
+  assert.match(source, /Generated PDF file was not found in storage\. Regenerate the letter before sending email\./);
+  assert.match(source, /UPDATE applicants SET email_status = 'Failed', error_message = \$1 WHERE id = \$2/);
+  assert.match(source, /email\.blocked_missing_pdf/);
+  assert.match(source, /return NextResponse\.json\(\{ error: errorMessage \}, \{ status: 404 \}\)/);
+
+  const missingPdfIndex = source.indexOf("Generated PDF file was not found in storage.");
+  const readPdfIndex = source.indexOf("const pdf = await readStorageBuffer");
+  const emailLogIndex = source.indexOf("INSERT INTO email_logs");
+
+  assert.ok(missingPdfIndex > -1);
+  assert.ok(readPdfIndex > missingPdfIndex);
+  assert.ok(emailLogIndex > missingPdfIndex);
+});
+
 test("email send route does not mark delivered mail failed when sent audit logging fails", async () => {
   const source = await readFile("app/api/send-email/route.ts", "utf8");
 

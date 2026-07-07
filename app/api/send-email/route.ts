@@ -9,7 +9,7 @@ import { handleApiError } from "@/lib/http";
 import { uploadLimits, formatBytes } from "@/lib/request-limits";
 import { sanitizeEmailHtml } from "@/lib/sanitize";
 import { getAppSettings } from "@/lib/settings";
-import { readStorageBuffer } from "@/lib/storage";
+import { readStorageBuffer, storageFileExists } from "@/lib/storage";
 import { enforceApplicantOwnership, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
@@ -92,6 +92,21 @@ export async function POST(request: Request) {
     }
     if (previousSend?.status === "sent" && !body.resendReason) {
       return NextResponse.json({ error: "This letter was already sent. Provide a resend reason to send again." }, { status: 409 });
+    }
+
+    if (!(await storageFileExists(letter.pdf_storage_key))) {
+      const errorMessage = "Generated PDF file was not found in storage. Regenerate the letter before sending email.";
+      await query("UPDATE applicants SET email_status = 'Failed', error_message = $1 WHERE id = $2", [
+        errorMessage,
+        letter.applicant_id
+      ]);
+      await audit("email.blocked_missing_pdf", "applicants", {
+        studentId: letter.student_id,
+        recipient: letter.email,
+        generatedLetterId: body.generatedLetterId,
+        error: errorMessage
+      }, letter.applicant_id, dbUser.id).catch(() => undefined);
+      return NextResponse.json({ error: errorMessage }, { status: 404 });
     }
 
     const pdf = await readStorageBuffer(letter.pdf_storage_key);
