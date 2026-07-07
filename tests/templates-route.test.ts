@@ -13,6 +13,19 @@ test("template route supports audited activation lifecycle updates", async () =>
   assert.match(source, /template\.status_updated/);
 });
 
+test("template list only exposes mappings to template managers", async () => {
+  const source = await readFile("app/api/templates/route.ts", "utf8");
+  const checklist = await readFile("docs/production-readiness.md", "utf8");
+
+  assert.match(source, /const user = await requireAuth\(request\)/);
+  assert.match(source, /const canManageMappings = user\.roles\.some/);
+  assert.match(source, /\["Admin", "Admissions Supervisor"\]\.includes\(role\)/);
+  assert.match(source, /canManageMappings\s+\?/);
+  assert.match(source, /json_build_object\('placeholder', fm\.placeholder, 'bannerField', fm\.banner_field, 'fallbackValue', fm\.fallback_value\)/);
+  assert.match(source, /'\[\]'::json AS mappings/);
+  assert.match(checklist, /Template mapping fallback values are only exposed to Admin and Admissions Supervisor roles/);
+});
+
 test("template uploads normalize and validate Banner template types", async () => {
   const source = await readFile("app/api/templates/route.ts", "utf8");
 

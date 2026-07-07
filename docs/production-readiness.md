@@ -57,6 +57,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Partial unique indexes block duplicate original email sends, including regenerated letters for the same applicant, while allowing authorized resends with a reason.
 - Settings changes are restricted to Admin and Admissions Supervisor roles and are audited.
 - Template activation changes are restricted to Admin and Admissions Supervisor roles and are audited.
+- Template mapping fallback values are only exposed to Admin and Admissions Supervisor roles.
 
 ## Data And Document Validation
 
