@@ -9,8 +9,29 @@ test("field mapping updates validate Banner fields and audit the acting user", a
   assert.match(source, /bannerField: z\.enum\(mappableLetterFields\)/);
   assert.match(source, /const user = await requireAuth\(request, \["Admin", "Admissions Supervisor"\]\)/);
   assert.match(source, /const dbUser = await ensureDbUser\(user\)/);
+  assert.match(source, /SELECT placeholders FROM templates WHERE id = \$1/);
+  assert.match(source, /Template not found\./);
+  assert.match(source, /templatePlaceholderNames\(template\.placeholders\)/);
+  assert.match(source, /Mappings include placeholders not detected in the template/);
   assert.match(source, /field_mappings\.updated/);
   assert.match(source, /body\.templateId, dbUser\.id\)/);
+});
+
+test("field mapping updates only accept placeholders detected on the template", async () => {
+  const source = await readFile("app/api/field-mappings/route.ts", "utf8");
+
+  assert.match(source, /function templatePlaceholderNames\(placeholders: unknown\)/);
+  assert.match(source, /Array\.isArray\(placeholders\)/);
+  assert.match(source, /"name" in placeholder/);
+  assert.match(source, /unknownPlaceholders = body\.mappings/);
+  assert.match(source, /!allowedPlaceholders\.has\(placeholder\)/);
+  assert.match(source, /throw new HttpError\(400, `Mappings include placeholders not detected in the template:/);
+
+  const validationIndex = source.indexOf("Mappings include placeholders not detected in the template");
+  const transactionIndex = source.indexOf("await withTransaction");
+
+  assert.ok(validationIndex > -1);
+  assert.ok(transactionIndex > validationIndex);
 });
 
 test("mapping UI prefills saved mappings and fallback values", async () => {

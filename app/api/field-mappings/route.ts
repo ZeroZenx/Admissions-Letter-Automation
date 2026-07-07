@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
-import { requireAuth } from "@/lib/auth";
+import { HttpError, requireAuth } from "@/lib/auth";
 import { mappableLetterFields } from "@/lib/banner-fields";
 import { query, withTransaction } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
@@ -25,6 +25,18 @@ export async function POST(request: Request) {
     const user = await requireAuth(request, ["Admin", "Admissions Supervisor"]);
     const dbUser = await ensureDbUser(user);
     const body = schema.parse(await request.json());
+    const templateResult = await query<{ placeholders: unknown }>("SELECT placeholders FROM templates WHERE id = $1", [body.templateId]);
+    const template = templateResult.rows[0];
+    if (!template) throw new HttpError(404, "Template not found.");
+
+    const allowedPlaceholders = templatePlaceholderNames(template.placeholders);
+    const unknownPlaceholders = body.mappings
+      .map((mapping) => mapping.placeholder)
+      .filter((placeholder) => !allowedPlaceholders.has(placeholder));
+    if (unknownPlaceholders.length) {
+      throw new HttpError(400, `Mappings include placeholders not detected in the template: ${unknownPlaceholders.join(", ")}.`);
+    }
+
     await withTransaction(async (client) => {
       await client.query("DELETE FROM field_mappings WHERE template_id = $1", [body.templateId]);
       for (const mapping of body.mappings) {
@@ -46,4 +58,14 @@ export async function POST(request: Request) {
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+function templatePlaceholderNames(placeholders: unknown) {
+  return new Set(
+    Array.isArray(placeholders)
+      ? placeholders
+          .map((placeholder) => (placeholder && typeof placeholder === "object" && "name" in placeholder ? placeholder.name : undefined))
+          .filter((name): name is string => typeof name === "string" && name.length > 0)
+      : []
+  );
 }
