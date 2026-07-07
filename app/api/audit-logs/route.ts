@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
+import { listLimits, readPaginationParams } from "@/lib/request-limits";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
     await requireAuth(request, ["Admin", "Admissions Supervisor"]);
+    const url = new URL(request.url);
+    const page = readPaginationParams(url, { defaultLimit: listLimits.auditLogs, maxLimit: listLimits.auditLogs });
     const result = await query<{
       id: string;
       action: string;
@@ -24,13 +27,15 @@ export async function GET(request: Request) {
          FROM audit_logs al
          LEFT JOIN users u ON u.id = al.user_id
          ORDER BY al.created_at DESC
-         LIMIT 500`
+         LIMIT $1 OFFSET $2`,
+      [page.limit, page.offset]
     );
     return NextResponse.json({
       auditLogs: result.rows.map((row) => ({
         ...row,
         details: sanitizeAuditDetails(row.details)
-      }))
+      })),
+      page
     });
   } catch (error) {
     return handleApiError(error);

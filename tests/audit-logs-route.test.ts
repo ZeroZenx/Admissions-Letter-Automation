@@ -9,6 +9,9 @@ test("audit logs expose actor identity for supervisor review", async () => {
   assert.match(routeSource, /LEFT JOIN users u ON u\.id = al\.user_id/);
   assert.match(routeSource, /u\.display_name AS actor_name/);
   assert.match(routeSource, /u\.email AS actor_email/);
+  assert.match(routeSource, /readPaginationParams\(url, \{ defaultLimit: listLimits\.auditLogs, maxLimit: listLimits\.auditLogs \}\)/);
+  assert.match(routeSource, /LIMIT \$1 OFFSET \$2/);
+  assert.match(routeSource, /page/);
   assert.match(clientSource, /actor_name: string \| null/);
   assert.match(clientSource, /actor_email: string \| null/);
   assert.match(clientSource, /<th>Actor<\/th>/);

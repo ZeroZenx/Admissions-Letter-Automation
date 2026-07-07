@@ -7,6 +7,9 @@ test("applicant API exposes Banner operational status and file columns", async (
 
   assert.match(source, /email_status, sent_date, word_file_name, pdf_file_name/);
   assert.match(source, /error_message, processed_by_flow, template_type/);
+  assert.match(source, /readPaginationParams\(url, \{ defaultLimit: listLimits\.applicants, maxLimit: listLimits\.applicants \}\)/);
+  assert.match(source, /LIMIT \$\$\{params\.length \+ 1\} OFFSET \$\$\{params\.length \+ 2\}/);
+  assert.match(source, /return NextResponse\.json\(\{ applicants: result\.rows, page \}\)/);
 });
 
 test("applicant status export returns Banner workbook with operational columns", async () => {
@@ -67,6 +70,9 @@ test("imports endpoint exposes upload review metadata without storage paths", as
   assert.match(source, /uploaded_file_name/);
   assert.match(source, /total_rows, i\.valid_rows, i\.invalid_rows, i\.status, i\.errors/);
   assert.match(source, /LEFT JOIN users/);
+  assert.match(source, /readPaginationParams\(url, \{ defaultLimit: listLimits\.imports, maxLimit: listLimits\.imports \}\)/);
+  assert.match(source, /LIMIT \$1 OFFSET \$2/);
+  assert.match(source, /return NextResponse\.json\(\{ imports: result\.rows, page \}\)/);
   assert.doesNotMatch(source, /storage_key/);
 });
 
@@ -161,6 +167,9 @@ test("generated letters endpoint and table expose operational file names", async
   const clientSource = await readFile("components/app-client.tsx", "utf8");
 
   assert.match(routeSource, /a\.word_file_name, a\.pdf_file_name/);
+  assert.match(routeSource, /readPaginationParams\(url, \{\n\s+defaultLimit: listLimits\.generatedLetters,\n\s+maxLimit: listLimits\.generatedLetters\n\s+\}\)/);
+  assert.match(routeSource, /LIMIT \$\$\{ownership\.params\.length \+ 1\} OFFSET \$\$\{ownership\.params\.length \+ 2\}/);
+  assert.match(routeSource, /return NextResponse\.json\(\{ generatedLetters: result\.rows, page \}\)/);
   assert.match(clientSource, /word_file_name: string \| null/);
   assert.match(clientSource, /pdf_file_name: string \| null/);
   assert.match(clientSource, /<th>Files<\/th>/);

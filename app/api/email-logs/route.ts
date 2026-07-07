@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
+import { listLimits, readPaginationParams } from "@/lib/request-limits";
 import { counselorApplicantWhereClause, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
@@ -18,6 +19,7 @@ export async function GET(request: Request) {
     const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor", "Viewer"]);
     const dbUser = await ensureDbUser(user);
     const url = new URL(request.url);
+    const page = readPaginationParams(url, { defaultLimit: listLimits.emailLogs, maxLimit: listLimits.emailLogs });
     const filters = filtersSchema.parse({
       generatedLetterId: url.searchParams.get("generatedLetterId") || undefined,
       applicantId: url.searchParams.get("applicantId") || undefined,
@@ -25,7 +27,7 @@ export async function GET(request: Request) {
     });
 
     const where: string[] = [];
-    const params: string[] = [];
+    const params: unknown[] = [];
     const ownership = counselorApplicantWhereClause(user, dbUser.id, params.length + 1);
     if (ownership.clause) {
       where.push(ownership.clause);
@@ -52,11 +54,11 @@ export async function GET(request: Request) {
          JOIN applicants a ON a.id = el.applicant_id
         ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
         ORDER BY el.created_at DESC
-        LIMIT 500`,
-      params
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+      [...params, page.limit, page.offset]
     );
 
-    return NextResponse.json({ emailLogs: result.rows });
+    return NextResponse.json({ emailLogs: result.rows, page });
   } catch (error) {
     return handleApiError(error);
   }

@@ -48,6 +48,7 @@ Use this checklist before enabling COSTAATT staff access.
 - PDF email attachments are limited to 10 MB.
 - Bulk generation requests are limited to 2,000 applicant IDs.
 - ZIP download requests are limited to 200 generated-letter IDs.
+- Dashboard list APIs enforce bounded `limit` and `offset` pagination.
 - Email HTML is sanitized before sending and logging.
 - Email Queue exposes recent send history, status, resend reasons, and errors without returning stored email bodies.
 - Default email subject and body are only exposed to letter operators and settings managers.

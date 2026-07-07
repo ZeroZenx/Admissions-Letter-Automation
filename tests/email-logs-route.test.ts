@@ -11,4 +11,7 @@ test("email log endpoint returns operational send history without message bodies
   assert.match(source, /recipient, el\.subject/);
   assert.doesNotMatch(source, /el\.body/);
   assert.match(source, /ORDER BY el\.created_at DESC/);
+  assert.match(source, /readPaginationParams\(url, \{ defaultLimit: listLimits\.emailLogs, maxLimit: listLimits\.emailLogs \}\)/);
+  assert.match(source, /LIMIT \$\$\{params\.length \+ 1\} OFFSET \$\$\{params\.length \+ 2\}/);
+  assert.match(source, /return NextResponse\.json\(\{ emailLogs: result\.rows, page \}\)/);
 });
