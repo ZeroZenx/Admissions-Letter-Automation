@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { getStorageEnv } from "@/lib/env";
 
@@ -40,6 +40,15 @@ export async function saveBuffer(area: string, originalName: string, buffer: Buf
 
 export async function readStorageBuffer(key: string) {
   return readFile(storagePath(key));
+}
+
+export async function storageFileExists(key: string) {
+  try {
+    await access(storagePath(key));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function normalizeStorageKey(key: string) {

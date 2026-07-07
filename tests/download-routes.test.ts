@@ -8,6 +8,8 @@ test("download ZIP route rejects partial archives and audits bulk downloads", as
   assert.match(source, /generatedLetterIds: z\.array\(z\.string\(\)\.uuid\(\)\)\.min\(1\)/);
   assert.match(source, /requireAuth\(request, \["Admin", "Admissions Supervisor", "Counselor"\]\)/);
   assert.match(source, /One or more generated letters were not found/);
+  assert.match(source, /storageFileExists\(key\)/);
+  assert.match(source, /One or more generated files were not found/);
   assert.match(source, /enforceApplicantOwnership/);
   assert.match(source, /letters\.downloaded_zip/);
   assert.match(source, /fileCount: result\.rows\.length/);
@@ -20,6 +22,8 @@ test("individual download route audits downloads without returning storage paths
 
   assert.match(source, /requireAuth\(request, \["Admin", "Admissions Supervisor", "Counselor"\]\)/);
   assert.match(source, /readStorageBuffer\(key\)/);
+  assert.match(source, /storageFileExists\(key\)/);
+  assert.match(source, /File not found/);
   assert.match(source, /letter\.downloaded/);
   assert.match(source, /fileType: type/);
   assert.match(source, /disposition = url\.searchParams\.get\("disposition"\) === "inline" \? "inline" : "attachment"/);

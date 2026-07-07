@@ -1,9 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { saveBuffer, storageKeyFromPath, storagePath } from "../lib/storage";
+import { saveBuffer, storageFileExists, storageKeyFromPath, storagePath } from "../lib/storage";
 
 function storageTestRoot() {
   return path.join(tmpdir(), "costaatt-storage-test-root");
@@ -48,4 +48,13 @@ test("saveBuffer returns portable storage keys", async () => {
 
   assert.match(key, /^generated\/[a-f0-9-]+-student_letter\.docx$/);
   assert.equal(key.includes("\\"), false);
+});
+
+test("storageFileExists reports missing generated files without throwing", async () => {
+  process.env.APP_STORAGE_DIR = await mkdtemp(path.join(tmpdir(), "costaatt-storage-"));
+  const key = await saveBuffer("generated", "student letter.pdf", Buffer.from("ok"));
+
+  assert.equal(await storageFileExists(key), true);
+  await rm(storagePath(key));
+  assert.equal(await storageFileExists(key), false);
 });

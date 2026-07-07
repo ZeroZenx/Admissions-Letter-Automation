@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { letterDownloadFileName } from "@/lib/download-filenames";
 import { handleApiError } from "@/lib/http";
-import { readStorageBuffer } from "@/lib/storage";
+import { readStorageBuffer, storageFileExists } from "@/lib/storage";
 import { enforceApplicantOwnership, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
@@ -28,6 +28,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (result.rows[0]) enforceApplicantOwnership(user, dbUser.id, result.rows[0]);
     const key = result.rows[0]?.[column];
     if (!key) return NextResponse.json({ error: "File not found." }, { status: 404 });
+    if (!(await storageFileExists(key))) return NextResponse.json({ error: "File not found." }, { status: 404 });
 
     const buffer = await readStorageBuffer(key);
     const contentType =

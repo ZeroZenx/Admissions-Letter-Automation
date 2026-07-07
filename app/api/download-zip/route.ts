@@ -7,7 +7,7 @@ import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { uniqueZipEntryName } from "@/lib/download-filenames";
 import { handleApiError } from "@/lib/http";
-import { storagePath } from "@/lib/storage";
+import { storageFileExists, storagePath } from "@/lib/storage";
 import { enforceApplicantOwnership, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
@@ -39,6 +39,14 @@ export async function POST(request: Request) {
     for (const letter of result.rows) requestedIds.delete(letter.id);
     if (requestedIds.size) {
       return NextResponse.json({ error: "One or more generated letters were not found." }, { status: 404 });
+    }
+    const missingFiles = [];
+    for (const letter of result.rows) {
+      const key = letter.pdf_storage_key ?? letter.docx_storage_key;
+      if (!(await storageFileExists(key))) missingFiles.push(letter.id);
+    }
+    if (missingFiles.length) {
+      return NextResponse.json({ error: "One or more generated files were not found." }, { status: 404 });
     }
 
     const archive = archiver("zip", { zlib: { level: 9 } });
