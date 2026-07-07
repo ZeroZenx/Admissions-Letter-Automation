@@ -30,7 +30,10 @@ test("template uploads auto-map placeholders that match Banner fields", async ()
   const readme = await readFile("README.md", "utf8");
 
   assert.match(source, /import \{ mappableLetterFields \} from "@\/lib\/banner-fields"/);
+  assert.match(source, /import \{ query, withTransaction \} from "@\/lib\/db"/);
   assert.match(source, /import \{ detectDocxPlaceholders, normalizePlaceholder \} from "@\/lib\/docx-placeholders"/);
+  assert.match(source, /const placeholderNames = placeholders\.map\(\(placeholder\) => placeholder\.name\)/);
+  assert.match(source, /const templateId = await withTransaction/);
   assert.match(source, /const autoMappableFields = new Map/);
   assert.match(source, /const autoMappings = placeholders/);
   assert.match(source, /autoMappableFields\.get\(autoMapKey\(placeholder\.name\)\)/);
@@ -40,4 +43,20 @@ test("template uploads auto-map placeholders that match Banner fields", async ()
   assert.match(source, /autoMappedCount: autoMappings\.length/);
   assert.match(source, /normalizePlaceholder\(value\)\.replace\(\/_\/g, ""\)\.toLowerCase\(\)/);
   assert.match(readme, /Template placeholders that normalize to Banner or derived letter fields are auto-mapped on upload/);
+});
+
+test("template re-uploads prune mappings for removed placeholders", async () => {
+  const source = await readFile("app/api/templates/route.ts", "utf8");
+
+  assert.match(source, /DELETE FROM field_mappings WHERE template_id = \$1 AND NOT \(placeholder = ANY\(\$2::text\[\]\)\)/);
+  assert.match(source, /\[\s*id,\s*placeholderNames\s*\]/);
+  assert.match(source, /return id;/);
+
+  const pruneIndex = source.indexOf("DELETE FROM field_mappings WHERE template_id");
+  const autoMapIndex = source.indexOf("INSERT INTO field_mappings (template_id, placeholder, banner_field)");
+  const auditIndex = source.indexOf('audit("template.upserted"');
+
+  assert.ok(pruneIndex > -1);
+  assert.ok(autoMapIndex > pruneIndex);
+  assert.ok(auditIndex > autoMapIndex);
 });

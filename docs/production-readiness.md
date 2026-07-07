@@ -64,6 +64,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Deactivate obsolete seed or retired templates and confirm they are not available for new field mappings or generation.
 - Map every detected placeholder to a Banner field or fallback.
 - Confirm field mapping updates reject placeholder names that were not detected in the selected template.
+- Confirm re-uploading a template removes mappings for placeholders no longer present in the DOCX.
 - Upload a current Banner export and confirm invalid rows are clearly shown.
 - Confirm duplicate `StudentID` plus `TemplateType` rows in a Banner export are flagged as row-level errors and are not silently imported.
 - Confirm the dashboard Import Review panel shows uploaded file, worksheet, status, valid/invalid row counts, uploader, and row-level errors.

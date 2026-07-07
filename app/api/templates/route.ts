@@ -3,7 +3,7 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
 import { mappableLetterFields } from "@/lib/banner-fields";
-import { query } from "@/lib/db";
+import { query, withTransaction } from "@/lib/db";
 import { detectDocxPlaceholders, normalizePlaceholder } from "@/lib/docx-placeholders";
 import { handleApiError } from "@/lib/http";
 import { uploadLimits, validateFileSize } from "@/lib/request-limits";
@@ -58,45 +58,54 @@ export async function POST(request: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const placeholders = detectDocxPlaceholders(buffer);
+    const placeholderNames = placeholders.map((placeholder) => placeholder.name);
     const storageKey = await saveBuffer("templates", file.name, buffer);
 
-    const result = await query<{ id: string }>(
-      `INSERT INTO templates (name, template_type, original_file_name, storage_key, placeholders, is_active, uploaded_by)
-       VALUES ($1, $2, $3, $4, $5, true, $6)
-       ON CONFLICT (template_type) DO UPDATE SET
-         name = EXCLUDED.name,
-         original_file_name = EXCLUDED.original_file_name,
-         storage_key = EXCLUDED.storage_key,
-         placeholders = EXCLUDED.placeholders,
-         is_active = true,
-         uploaded_by = EXCLUDED.uploaded_by,
-         uploaded_at = now()
-       RETURNING id`,
-      [name, templateType, file.name, storageKey, placeholders, dbUser.id]
-    );
     const autoMappings = placeholders
       .map((placeholder) => ({
         placeholder: placeholder.name,
         bannerField: autoMappableFields.get(autoMapKey(placeholder.name))
       }))
       .filter((mapping): mapping is { placeholder: string; bannerField: (typeof mappableLetterFields)[number] } => Boolean(mapping.bannerField));
-    for (const mapping of autoMappings) {
-      await query(
-        `INSERT INTO field_mappings (template_id, placeholder, banner_field)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (template_id, placeholder) DO UPDATE SET banner_field = EXCLUDED.banner_field`,
-        [result.rows[0].id, mapping.placeholder, mapping.bannerField]
+    const templateId = await withTransaction(async (client) => {
+      const result = await client.query<{ id: string }>(
+        `INSERT INTO templates (name, template_type, original_file_name, storage_key, placeholders, is_active, uploaded_by)
+         VALUES ($1, $2, $3, $4, $5, true, $6)
+         ON CONFLICT (template_type) DO UPDATE SET
+           name = EXCLUDED.name,
+           original_file_name = EXCLUDED.original_file_name,
+           storage_key = EXCLUDED.storage_key,
+           placeholders = EXCLUDED.placeholders,
+           is_active = true,
+           uploaded_by = EXCLUDED.uploaded_by,
+           uploaded_at = now()
+         RETURNING id`,
+        [name, templateType, file.name, storageKey, placeholders, dbUser.id]
       );
-    }
+      const id = result.rows[0].id;
+      await client.query("DELETE FROM field_mappings WHERE template_id = $1 AND NOT (placeholder = ANY($2::text[]))", [
+        id,
+        placeholderNames
+      ]);
+      for (const mapping of autoMappings) {
+        await client.query(
+          `INSERT INTO field_mappings (template_id, placeholder, banner_field)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (template_id, placeholder) DO UPDATE SET banner_field = EXCLUDED.banner_field`,
+          [id, mapping.placeholder, mapping.bannerField]
+        );
+      }
+      return id;
+    });
 
     await audit("template.upserted", "templates", {
       templateType,
       originalFileName: file.name,
       placeholderCount: placeholders.length,
       autoMappedCount: autoMappings.length
-    }, result.rows[0].id, dbUser.id);
+    }, templateId, dbUser.id);
 
-    return NextResponse.json({ id: result.rows[0].id, placeholders });
+    return NextResponse.json({ id: templateId, placeholders });
   } catch (error) {
     return handleApiError(error);
   }
