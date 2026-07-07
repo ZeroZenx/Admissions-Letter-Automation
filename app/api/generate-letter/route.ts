@@ -7,7 +7,7 @@ import { buildLetterValues } from "@/lib/letter-values";
 import { convertDocxToPdf } from "@/lib/pdf-converter";
 import { query } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
-import { readStorageBuffer, saveBuffer } from "@/lib/storage";
+import { readStorageBuffer, saveBuffer, storageFileExists } from "@/lib/storage";
 import { enforceApplicantOwnership, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
@@ -52,6 +52,10 @@ export async function POST(request: Request) {
     const missingMappings = missingTemplateMappings(template.placeholders, mappings.rows);
     if (missingMappings.length) {
       throw new HttpError(400, `Template ${String(applicant.template_type)} has unmapped placeholders: ${missingMappings.join(", ")}.`);
+    }
+
+    if (!(await storageFileExists(String(template.storage_key)))) {
+      throw new HttpError(400, `Template file for ${String(applicant.template_type)} was not found in storage. Re-upload and activate the template before generating letters.`);
     }
 
     const templateBuffer = await readStorageBuffer(String(template.storage_key));

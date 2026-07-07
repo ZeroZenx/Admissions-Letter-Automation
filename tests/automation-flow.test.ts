@@ -92,6 +92,21 @@ test("letter generation blocks unmapped template placeholders server-side", asyn
   assert.match(source, /placeholderNames\.filter\(\(name\) => !mapped\.has\(name\)\)/);
 });
 
+test("letter generation reports missing template files before merging", async () => {
+  const source = await readFile("app/api/generate-letter/route.ts", "utf8");
+
+  assert.match(source, /storageFileExists\(String\(template\.storage_key\)\)/);
+  assert.match(source, /Template file for \$\{String\(applicant\.template_type\)\} was not found in storage/);
+  assert.match(source, /Re-upload and activate the template before generating letters/);
+  assert.match(source, /throw new HttpError\(400/);
+
+  const missingFileIndex = source.indexOf("Template file for ${String(applicant.template_type)} was not found in storage");
+  const readTemplateIndex = source.indexOf("const templateBuffer = await readStorageBuffer");
+
+  assert.ok(missingFileIndex > -1);
+  assert.ok(readTemplateIndex > missingFileIndex);
+});
+
 test("PDF conversion updates applicant operational PDF filename", async () => {
   const source = await readFile("app/api/convert-pdf/route.ts", "utf8");
   const converterSource = await readFile("lib/pdf-converter.ts", "utf8");
