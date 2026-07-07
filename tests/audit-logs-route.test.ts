@@ -14,3 +14,17 @@ test("audit logs expose actor identity for supervisor review", async () => {
   assert.match(clientSource, /<th>Actor<\/th>/);
   assert.match(clientSource, /log\.actor_name \?\? "System"/);
 });
+
+test("audit log details are sanitized before browser exposure", async () => {
+  const routeSource = await readFile("app/api/audit-logs/route.ts", "utf8");
+  const checklist = await readFile("docs/production-readiness.md", "utf8");
+
+  assert.match(routeSource, /details: sanitizeAuditDetails\(row\.details\)/);
+  assert.match(routeSource, /function sanitizeAuditDetails\(value: unknown\): unknown/);
+  assert.match(routeSource, /function isSensitiveAuditKey\(key: string\)/);
+  assert.match(routeSource, /access\)\?token\|authorization\|body\|content\|attachment\|storage_\?key\|path/);
+  assert.match(routeSource, /redactSensitiveAuditText/);
+  assert.match(routeSource, /redacted-database-url/);
+  assert.match(routeSource, /redacted-path/);
+  assert.match(checklist, /Audit log details are sanitized before being returned to the browser/);
+});
