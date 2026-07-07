@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Database,
   Download,
@@ -142,6 +144,13 @@ type ApplicantFilters = {
   program: string;
 };
 
+type PageState = {
+  limit: number;
+  offset: number;
+};
+
+type PageKey = "applicants" | "generatedLetters" | "emailLogs" | "imports" | "auditLogs";
+
 const sections = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "upload", label: "Upload Banner Export", icon: Upload },
@@ -155,6 +164,14 @@ const sections = [
 ] as const;
 
 const filterKeys: Array<keyof ApplicantFilters> = ["templateType", "admissionStatus", "emailStatus", "campus", "program"];
+
+const initialPages: Record<PageKey, PageState> = {
+  applicants: { limit: 500, offset: 0 },
+  generatedLetters: { limit: 200, offset: 0 },
+  emailLogs: { limit: 500, offset: 0 },
+  imports: { limit: 8, offset: 0 },
+  auditLogs: { limit: 500, offset: 0 }
+};
 
 const fallbackSettings: AppSettings = {
   email: {
@@ -176,6 +193,7 @@ export function AppClient() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
   const [imports, setImports] = useState<ImportRecord[]>([]);
+  const [pages, setPages] = useState(initialPages);
   const [settings, setSettings] = useState<AppSettings>(fallbackSettings);
   const [selectedApplicants, setSelectedApplicants] = useState<string[]>([]);
   const [message, setMessage] = useState("");
@@ -205,29 +223,50 @@ export function AppClient() {
     if (auth.status !== "authenticated") return;
     try {
       const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
+      applyPageQuery(query, pages.applicants);
       const [applicantRes, templateRes, generatedRes, emailLogRes, importRes, auditRes] = await Promise.all([
         authenticatedFetch(`/api/applicants?${query.toString()}`),
         authenticatedFetch("/api/templates"),
-        authenticatedFetch("/api/generated-letters"),
-        authenticatedFetch("/api/email-logs"),
-        authenticatedFetch("/api/imports"),
-        canManageWorkspace ? authenticatedFetch("/api/audit-logs") : Promise.resolve(null)
+        authenticatedFetch(`/api/generated-letters?${pageQuery(pages.generatedLetters)}`),
+        authenticatedFetch(`/api/email-logs?${pageQuery(pages.emailLogs)}`),
+        authenticatedFetch(`/api/imports?${pageQuery(pages.imports)}`),
+        canManageWorkspace ? authenticatedFetch(`/api/audit-logs?${pageQuery(pages.auditLogs)}`) : Promise.resolve(null)
       ]);
       const failed = [applicantRes, templateRes, generatedRes, emailLogRes, importRes, auditRes].find((response) => response && !response.ok);
       if (failed) {
         const body = await readJson<{ error?: string }>(failed);
         setMessage(body.error ?? "Some dashboard data could not be loaded. Check database and authentication settings.");
       }
-      if (applicantRes.ok) setApplicants((await applicantRes.json()).applicants);
+      if (applicantRes.ok) {
+        const body = await applicantRes.json();
+        setApplicants(body.applicants);
+        setPages((current) => mergePage(current, "applicants", body.page));
+      }
       if (templateRes.ok) setTemplates((await templateRes.json()).templates);
-      if (generatedRes.ok) setGeneratedLetters((await generatedRes.json()).generatedLetters);
-      if (emailLogRes.ok) setEmailLogs((await emailLogRes.json()).emailLogs);
-      if (importRes.ok) setImports((await importRes.json()).imports);
-      if (auditRes?.ok) setAuditLogs((await auditRes.json()).auditLogs);
+      if (generatedRes.ok) {
+        const body = await generatedRes.json();
+        setGeneratedLetters(body.generatedLetters);
+        setPages((current) => mergePage(current, "generatedLetters", body.page));
+      }
+      if (emailLogRes.ok) {
+        const body = await emailLogRes.json();
+        setEmailLogs(body.emailLogs);
+        setPages((current) => mergePage(current, "emailLogs", body.page));
+      }
+      if (importRes.ok) {
+        const body = await importRes.json();
+        setImports(body.imports);
+        setPages((current) => mergePage(current, "imports", body.page));
+      }
+      if (auditRes?.ok) {
+        const body = await auditRes.json();
+        setAuditLogs(body.auditLogs);
+        setPages((current) => mergePage(current, "auditLogs", body.page));
+      }
     } catch (error) {
       setMessage(`Dashboard refresh failed: ${clientErrorMessage(error)}`);
     }
-  }, [auth.status, canManageWorkspace, filters]);
+  }, [auth.status, canManageWorkspace, filters, pages.applicants, pages.auditLogs, pages.emailLogs, pages.generatedLetters, pages.imports]);
 
   const refreshSettings = useCallback(async () => {
     if (auth.status !== "authenticated") return;
@@ -274,6 +313,15 @@ export function AppClient() {
       }),
     [canManageWorkspace, canOperateLetters]
   );
+
+  function updatePage(key: PageKey, page: PageState) {
+    setPages((current) => ({ ...current, [key]: page }));
+  }
+
+  function updateFilters(nextFilters: ApplicantFilters) {
+    setFilters(nextFilters);
+    setPages((current) => ({ ...current, applicants: { ...current.applicants, offset: 0 } }));
+  }
 
   useEffect(() => {
     if (auth.status !== "authenticated") return;
@@ -522,13 +570,24 @@ export function AppClient() {
           ) : null}
           {auth.status === "misconfigured" ? <p className="notice">{auth.error}</p> : null}
           {message ? <p className="notice">{message}</p> : null}
-          {canUseWorkspace && active === "dashboard" && <Dashboard metrics={metrics} applicants={applicants} templates={templates} imports={imports} />}
+          {canUseWorkspace && active === "dashboard" && (
+            <Dashboard
+              metrics={metrics}
+              applicants={applicants}
+              templates={templates}
+              imports={imports}
+              importsPage={pages.imports}
+              onImportsPage={(page) => updatePage("imports", page)}
+            />
+          )}
           {canUseWorkspace && canOperateLetters && active === "upload" && <UploadPage busy={busy} onUpload={uploadImport} />}
           {canUseWorkspace && active === "applicants" && (
             <ApplicantsPage
               applicants={applicants}
               filters={filters}
-              onFilters={setFilters}
+              page={pages.applicants}
+              onPage={(page) => updatePage("applicants", page)}
+              onFilters={updateFilters}
               selected={selectedApplicants}
               onSelected={setSelectedApplicants}
               canSelect={canOperateLetters}
@@ -547,6 +606,8 @@ export function AppClient() {
               busy={busy}
               onGenerate={generateSelected}
               generatedLetters={generatedLetters}
+              generatedPage={pages.generatedLetters}
+              onGeneratedPage={(page) => updatePage("generatedLetters", page)}
               onDownload={downloadLetter}
               onPreview={previewLetter}
               onDownloadZip={downloadZip}
@@ -557,6 +618,10 @@ export function AppClient() {
             <EmailQueue
               generatedLetters={generatedLetters}
               emailLogs={emailLogs}
+              emailLogsPage={pages.emailLogs}
+              onEmailLogsPage={(page) => updatePage("emailLogs", page)}
+              generatedPage={pages.generatedLetters}
+              onGeneratedPage={(page) => updatePage("generatedLetters", page)}
               onDownload={downloadLetter}
               onPreview={previewLetter}
               onDownloadZip={downloadZip}
@@ -565,7 +630,9 @@ export function AppClient() {
               canSend={canOperateLetters}
             />
           )}
-          {canUseWorkspace && canManageWorkspace && active === "audit" && <AuditPage auditLogs={auditLogs} />}
+          {canUseWorkspace && canManageWorkspace && active === "audit" && (
+            <AuditPage auditLogs={auditLogs} page={pages.auditLogs} onPage={(page) => updatePage("auditLogs", page)} />
+          )}
           {canUseWorkspace && canManageWorkspace && active === "settings" && (
             <SettingsPage settings={settings} onSettings={setSettings} onRefresh={refreshSettings} />
           )}
@@ -585,6 +652,24 @@ async function readJson<T>(response: Response): Promise<T> {
   } catch {
     return {} as T;
   }
+}
+
+function pageQuery(page: PageState) {
+  const query = new URLSearchParams();
+  applyPageQuery(query, page);
+  return query.toString();
+}
+
+function applyPageQuery(query: URLSearchParams, page: PageState) {
+  query.set("limit", String(page.limit));
+  query.set("offset", String(page.offset));
+}
+
+function mergePage(current: Record<PageKey, PageState>, key: PageKey, next?: PageState) {
+  if (!next) return current;
+  const currentPage = current[key];
+  if (currentPage.limit === next.limit && currentPage.offset === next.offset) return current;
+  return { ...current, [key]: next };
 }
 
 function clientErrorMessage(error: unknown) {
@@ -626,12 +711,16 @@ function Dashboard({
   metrics,
   applicants,
   templates,
-  imports
+  imports,
+  importsPage,
+  onImportsPage
 }: {
   metrics: Record<string, number>;
   applicants: Applicant[];
   templates: Template[];
   imports: ImportRecord[];
+  importsPage: PageState;
+  onImportsPage: (page: PageState) => void;
 }) {
   return (
     <div className="grid">
@@ -657,12 +746,12 @@ function Dashboard({
           ))}
         </Panel>
       </div>
-      <ImportHistory imports={imports.slice(0, 8)} />
+      <ImportHistory imports={imports} page={importsPage} onPage={onImportsPage} />
     </div>
   );
 }
 
-function ImportHistory({ imports }: { imports: ImportRecord[] }) {
+function ImportHistory({ imports, page, onPage }: { imports: ImportRecord[]; page: PageState; onPage: (page: PageState) => void }) {
   return (
     <Panel title="Import Review">
       <div className="table-wrap">
@@ -699,6 +788,7 @@ function ImportHistory({ imports }: { imports: ImportRecord[] }) {
           </tbody>
         </table>
       </div>
+      <PaginationControls page={page} loadedCount={imports.length} onPage={onPage} />
     </Panel>
   );
 }
@@ -725,6 +815,8 @@ function UploadPage({ busy, onUpload }: { busy: boolean; onUpload: (formData: Fo
 function ApplicantsPage({
   applicants,
   filters,
+  page,
+  onPage,
   onFilters,
   selected,
   onSelected,
@@ -733,6 +825,8 @@ function ApplicantsPage({
 }: {
   applicants: Applicant[];
   filters: ApplicantFilters;
+  page: PageState;
+  onPage: (page: PageState) => void;
   onFilters: (filters: ApplicantFilters) => void;
   selected: string[];
   onSelected: (ids: string[]) => void;
@@ -755,6 +849,7 @@ function ApplicantsPage({
         </button>
       </div>
       <RecordsTable applicants={applicants} selected={canSelect ? selected : undefined} onSelected={canSelect ? onSelected : undefined} />
+      <PaginationControls page={page} loadedCount={applicants.length} onPage={onPage} />
     </Panel>
   );
 }
@@ -885,6 +980,8 @@ function GeneratePage({
   busy,
   onGenerate,
   generatedLetters,
+  generatedPage,
+  onGeneratedPage,
   onDownload,
   onPreview,
   onDownloadZip,
@@ -896,6 +993,8 @@ function GeneratePage({
   busy: boolean;
   onGenerate: () => void;
   generatedLetters: GeneratedLetter[];
+  generatedPage: PageState;
+  onGeneratedPage: (page: PageState) => void;
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
   onPreview: (letterId: string) => void;
   onDownloadZip: (letterIds: string[]) => void;
@@ -912,6 +1011,8 @@ function GeneratePage({
       </Panel>
       <GeneratedTable
         generatedLetters={generatedLetters}
+        page={generatedPage}
+        onPage={onGeneratedPage}
         onDownload={onDownload}
         onPreview={onPreview}
         onDownloadZip={onDownloadZip}
@@ -924,6 +1025,10 @@ function GeneratePage({
 function EmailQueue({
   generatedLetters,
   emailLogs,
+  emailLogsPage,
+  onEmailLogsPage,
+  generatedPage,
+  onGeneratedPage,
   onDownload,
   onPreview,
   onDownloadZip,
@@ -933,6 +1038,10 @@ function EmailQueue({
 }: {
   generatedLetters: GeneratedLetter[];
   emailLogs: EmailLog[];
+  emailLogsPage: PageState;
+  onEmailLogsPage: (page: PageState) => void;
+  generatedPage: PageState;
+  onGeneratedPage: (page: PageState) => void;
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
   onPreview: (letterId: string) => void;
   onDownloadZip: (letterIds: string[]) => void;
@@ -1015,9 +1124,11 @@ function EmailQueue({
           </button>
         </Panel>
       ) : null}
-      <EmailLogTable emailLogs={emailLogs} />
+      <EmailLogTable emailLogs={emailLogs} page={emailLogsPage} onPage={onEmailLogsPage} />
       <GeneratedTable
         generatedLetters={generatedLetters}
+        page={generatedPage}
+        onPage={onGeneratedPage}
         onDownload={onDownload}
         onPreview={onPreview}
         onDownloadZip={onDownloadZip}
@@ -1027,7 +1138,7 @@ function EmailQueue({
   );
 }
 
-function EmailLogTable({ emailLogs }: { emailLogs: EmailLog[] }) {
+function EmailLogTable({ emailLogs, page, onPage }: { emailLogs: EmailLog[]; page: PageState; onPage: (page: PageState) => void }) {
   return (
     <Panel title="Recent Email Activity">
       <div className="table-wrap">
@@ -1060,11 +1171,12 @@ function EmailLogTable({ emailLogs }: { emailLogs: EmailLog[] }) {
           </tbody>
         </table>
       </div>
+      <PaginationControls page={page} loadedCount={emailLogs.length} onPage={onPage} />
     </Panel>
   );
 }
 
-function AuditPage({ auditLogs }: { auditLogs: AuditLog[] }) {
+function AuditPage({ auditLogs, page, onPage }: { auditLogs: AuditLog[]; page: PageState; onPage: (page: PageState) => void }) {
   return (
     <Panel title="Audit Logs">
       <div className="table-wrap">
@@ -1096,6 +1208,7 @@ function AuditPage({ auditLogs }: { auditLogs: AuditLog[] }) {
           </tbody>
         </table>
       </div>
+      <PaginationControls page={page} loadedCount={auditLogs.length} onPage={onPage} />
     </Panel>
   );
 }
@@ -1283,12 +1396,16 @@ function RecordsTable({
 
 function GeneratedTable({
   generatedLetters,
+  page,
+  onPage,
   onDownload,
   onPreview,
   onDownloadZip,
   canDownload
 }: {
   generatedLetters: GeneratedLetter[];
+  page: PageState;
+  onPage: (page: PageState) => void;
   onDownload: (letterId: string, type: "docx" | "pdf") => void;
   onPreview: (letterId: string) => void;
   onDownloadZip: (letterIds: string[]) => void;
@@ -1355,7 +1472,39 @@ function GeneratedTable({
           </tbody>
         </table>
       </div>
+      <PaginationControls page={page} loadedCount={generatedLetters.length} onPage={onPage} />
     </Panel>
+  );
+}
+
+function PaginationControls({
+  page,
+  loadedCount,
+  onPage
+}: {
+  page: PageState;
+  loadedCount: number;
+  onPage: (page: PageState) => void;
+}) {
+  const start = loadedCount ? page.offset + 1 : 0;
+  const end = page.offset + loadedCount;
+  const canPrevious = page.offset > 0;
+  const canNext = loadedCount === page.limit;
+
+  return (
+    <div className="pagination">
+      <span className="muted">
+        Rows {start}-{end}
+      </span>
+      <div className="pagination-actions">
+        <button className="button secondary icon-button" disabled={!canPrevious} onClick={() => onPage({ ...page, offset: Math.max(0, page.offset - page.limit) })}>
+          <ChevronLeft size={16} />
+        </button>
+        <button className="button secondary icon-button" disabled={!canNext} onClick={() => onPage({ ...page, offset: page.offset + page.limit })}>
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
   );
 }
 

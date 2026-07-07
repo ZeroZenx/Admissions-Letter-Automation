@@ -229,6 +229,12 @@ a {
   border-color: var(--line);
 }
 
+.icon-button {
+  min-height: 34px;
+  width: 38px;
+  padding: 0;
+}
+
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -282,6 +288,19 @@ a {
 
 .table-wrap {
   overflow: auto;
+}
+
+.pagination {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+.pagination-actions {
+  display: flex;
+  gap: 8px;
 }
 
 table {

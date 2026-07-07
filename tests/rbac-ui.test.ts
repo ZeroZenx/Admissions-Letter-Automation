@@ -19,7 +19,7 @@ test("workspace UI mirrors backend role boundaries", async () => {
   assert.match(source, /const canOperateLetters = hasAnyRole\(userRoles, \["Admin", "Admissions Supervisor", "Counselor"\]\)/);
   assert.match(source, /section\.id === "upload" \|\| section\.id === "generate"/);
   assert.match(source, /section\.id === "templates" \|\| section\.id === "mappings" \|\| section\.id === "audit" \|\| section\.id === "settings"/);
-  assert.match(source, /canManageWorkspace \? authenticatedFetch\("\/api\/audit-logs"\) : Promise\.resolve\(null\)/);
+  assert.match(source, /canManageWorkspace \? authenticatedFetch\(`\/api\/audit-logs\?\$\{pageQuery\(pages\.auditLogs\)\}`\) : Promise\.resolve\(null\)/);
   assert.match(source, /active === "email" && \(/);
   assert.match(source, /canSend=\{canOperateLetters\}/);
   assert.match(source, /canSelect=\{canOperateLetters\}/);
@@ -27,6 +27,28 @@ test("workspace UI mirrors backend role boundaries", async () => {
   assert.match(source, /\{canSend \? \(/);
   assert.match(source, /canDownload=\{canSend\}/);
   assert.match(source, /\{canDownload \? <th>Downloads<\/th> : null\}/);
+});
+
+test("workspace UI exposes bounded pagination controls for list pages", async () => {
+  const source = await readFile("components/app-client.tsx", "utf8");
+  const styles = await readFile("app/globals.css", "utf8");
+
+  assert.match(source, /type PageState = \{\n\s+limit: number;\n\s+offset: number;\n\}/);
+  assert.match(source, /const initialPages: Record<PageKey, PageState>/);
+  assert.match(source, /applyPageQuery\(query, pages\.applicants\)/);
+  assert.match(source, /authenticatedFetch\(`\/api\/generated-letters\?\$\{pageQuery\(pages\.generatedLetters\)\}`\)/);
+  assert.match(source, /authenticatedFetch\(`\/api\/email-logs\?\$\{pageQuery\(pages\.emailLogs\)\}`\)/);
+  assert.match(source, /authenticatedFetch\(`\/api\/imports\?\$\{pageQuery\(pages\.imports\)\}`\)/);
+  assert.match(source, /mergePage\(current, "applicants", body\.page\)/);
+  assert.match(source, /function PaginationControls/);
+  assert.match(source, /<PaginationControls page=\{page\} loadedCount=\{applicants\.length\} onPage=\{onPage\} \/>/);
+  assert.match(source, /<PaginationControls page=\{page\} loadedCount=\{generatedLetters\.length\} onPage=\{onPage\} \/>/);
+  assert.match(source, /<PaginationControls page=\{page\} loadedCount=\{emailLogs\.length\} onPage=\{onPage\} \/>/);
+  assert.match(source, /<PaginationControls page=\{page\} loadedCount=\{auditLogs\.length\} onPage=\{onPage\} \/>/);
+  assert.match(source, /onPage\(\{ \.\.\.page, offset: Math\.max\(0, page\.offset - page\.limit\) \}\)/);
+  assert.match(source, /onPage\(\{ \.\.\.page, offset: page\.offset \+ page\.limit \}\)/);
+  assert.match(styles, /\.pagination/);
+  assert.match(styles, /\.icon-button/);
 });
 
 test("workspace refresh failures are shown instead of crashing the client", async () => {
