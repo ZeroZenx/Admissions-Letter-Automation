@@ -70,6 +70,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Confirm upload automation is blocked with a clear preflight message when a required `TemplateType` is missing, inactive, or has unmapped placeholders.
 - Confirm missing stored template files block generation with a clear re-upload message and applicant `ErrorMessage`.
 - Confirm generation failures write applicant `ErrorMessage` values and failed generated-letter statuses.
+- Confirm missing generated DOCX files block PDF conversion with a clear regenerate message and failed generated-letter status.
 - Confirm the upload send option uses the authenticated Microsoft Graph mailbox, updates email status/sent dates, and records row-level errors.
 - Confirm email attempts move applicant status through queued/sending/sent or failed without marking Graph-accepted mail as failed because of later audit issues.
 - Confirm missing generated PDF files block email sending with a clear applicant `ErrorMessage` and audit entry.

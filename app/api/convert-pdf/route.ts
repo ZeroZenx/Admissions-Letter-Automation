@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { convertDocxToPdf } from "@/lib/pdf-converter";
 import { query } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
+import { storageFileExists } from "@/lib/storage";
 import { enforceApplicantOwnership, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
@@ -44,6 +45,10 @@ export async function POST(request: Request) {
     if (!letter) return NextResponse.json({ error: "Generated letter not found." }, { status: 404 });
     failureLetter = letter;
     enforceApplicantOwnership(user, dbUser.id, letter);
+
+    if (!(await storageFileExists(letter.docx_storage_key))) {
+      throw new Error("Generated DOCX file was not found in storage. Regenerate the letter before converting to PDF.");
+    }
 
     const pdfStorageKey = await convertDocxToPdf(letter.docx_storage_key);
     const pdfFileName = `${letter.student_id}-${letter.template_type}.pdf`;

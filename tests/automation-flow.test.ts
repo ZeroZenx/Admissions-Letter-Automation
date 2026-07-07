@@ -130,6 +130,19 @@ test("PDF conversion records generated-letter and applicant failures", async () 
   assert.match(source, /Unknown PDF conversion failure/);
 });
 
+test("PDF conversion reports missing generated DOCX files before LibreOffice", async () => {
+  const source = await readFile("app/api/convert-pdf/route.ts", "utf8");
+
+  assert.match(source, /storageFileExists\(letter\.docx_storage_key\)/);
+  assert.match(source, /Generated DOCX file was not found in storage\. Regenerate the letter before converting to PDF\./);
+
+  const missingDocxIndex = source.indexOf("Generated DOCX file was not found in storage.");
+  const convertIndex = source.indexOf("const pdfStorageKey = await convertDocxToPdf");
+
+  assert.ok(missingDocxIndex > -1);
+  assert.ok(convertIndex > missingDocxIndex);
+});
+
 test("generated letters endpoint and table expose operational file names", async () => {
   const routeSource = await readFile("app/api/generated-letters/route.ts", "utf8");
   const clientSource = await readFile("components/app-client.tsx", "utf8");
