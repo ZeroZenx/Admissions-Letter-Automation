@@ -7,13 +7,14 @@ import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { uniqueZipEntryName } from "@/lib/download-filenames";
 import { handleApiError } from "@/lib/http";
+import { uploadLimits } from "@/lib/request-limits";
 import { storageFileExists, storagePath } from "@/lib/storage";
 import { enforceApplicantOwnership, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
 
 const schema = z.object({
-  generatedLetterIds: z.array(z.string().uuid()).min(1)
+  generatedLetterIds: z.array(z.string().uuid()).min(1).max(uploadLimits.zipGeneratedLetterIds)
 });
 
 export async function POST(request: Request) {

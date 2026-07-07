@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 test("download ZIP route rejects partial archives and audits bulk downloads", async () => {
   const source = await readFile("app/api/download-zip/route.ts", "utf8");
 
-  assert.match(source, /generatedLetterIds: z\.array\(z\.string\(\)\.uuid\(\)\)\.min\(1\)/);
+  assert.match(source, /generatedLetterIds: z\.array\(z\.string\(\)\.uuid\(\)\)\.min\(1\)\.max\(uploadLimits\.zipGeneratedLetterIds\)/);
   assert.match(source, /requireAuth\(request, \["Admin", "Admissions Supervisor", "Counselor"\]\)/);
   assert.match(source, /One or more generated letters were not found/);
   assert.match(source, /storageFileExists\(key\)/);

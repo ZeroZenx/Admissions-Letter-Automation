@@ -6,6 +6,8 @@ test("upload limits are explicit production controls", () => {
   assert.equal(uploadLimits.excelBytes, 10 * 1024 * 1024);
   assert.equal(uploadLimits.docxBytes, 15 * 1024 * 1024);
   assert.equal(uploadLimits.pdfAttachmentBytes, 10 * 1024 * 1024);
+  assert.equal(uploadLimits.bulkApplicantIds, 2000);
+  assert.equal(uploadLimits.zipGeneratedLetterIds, 200);
 });
 
 test("formatBytes renders MB values", () => {

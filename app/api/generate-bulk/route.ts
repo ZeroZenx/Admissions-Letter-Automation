@@ -5,12 +5,13 @@ import { requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { getAuthEnv } from "@/lib/env";
 import { handleApiError } from "@/lib/http";
+import { uploadLimits } from "@/lib/request-limits";
 import { ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
 
 const schema = z.object({
-  applicantIds: z.array(z.string().uuid()).min(1),
+  applicantIds: z.array(z.string().uuid()).min(1).max(uploadLimits.bulkApplicantIds),
   sendEmail: z.boolean().default(false),
   subject: z.string().trim().min(1).max(160).optional(),
   body: z.string().trim().min(1).max(12000).optional()

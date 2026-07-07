@@ -137,7 +137,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Raw storage paths are never returned from download APIs; files are fetched by generated-letter id.
 - ZIP downloads reject missing generated-letter IDs instead of returning partial archives.
 - Production Graph email sending requires a delegated Microsoft Graph bearer token with `Mail.Send`.
-- Upload and email attachment size limits are enforced server-side.
+- Upload, email attachment, bulk generation, and ZIP download size limits are enforced server-side.
 - Security headers are applied by `middleware.ts`.
 - Database integrity constraints and indexes are applied through `npm run db:setup`.
 - Query-performance indexes cover import review, automation preflight, generated letters, and email activity.

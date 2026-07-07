@@ -229,6 +229,7 @@ test("upload automation failures release busy state and report an error", async 
 test("bulk generation can send generated PDFs and persist row-level failures", async () => {
   const source = await readFile("app/api/generate-bulk/route.ts", "utf8");
 
+  assert.match(source, /applicantIds: z\.array\(z\.string\(\)\.uuid\(\)\)\.min\(1\)\.max\(uploadLimits\.bulkApplicantIds\)/);
   assert.match(source, /sendEmail: z\.boolean\(\)\.default\(false\)/);
   assert.match(source, /const authEnv = getAuthEnv\(\)/);
   assert.match(source, /x-graph-access-token/);
