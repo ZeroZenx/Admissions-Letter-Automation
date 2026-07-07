@@ -21,7 +21,7 @@ const schema = z.object({
 
 export async function GET(request: Request) {
   try {
-    await requireAuth(request);
+    await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
     const settings = await getAppSettings();
     return NextResponse.json({ settings });
   } catch (error) {

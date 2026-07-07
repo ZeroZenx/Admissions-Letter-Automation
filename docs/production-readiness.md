@@ -48,6 +48,7 @@ Use this checklist before enabling COSTAATT staff access.
 - PDF email attachments are limited to 10 MB.
 - Email HTML is sanitized before sending and logging.
 - Email Queue exposes recent send history, status, resend reasons, and errors without returning stored email bodies.
+- Default email subject and body are only exposed to letter operators and settings managers.
 - Health and download APIs do not expose raw storage paths.
 - Health failure details are redacted before being returned to the browser.
 - Unexpected server errors return a generic response while server logs keep the detailed exception.

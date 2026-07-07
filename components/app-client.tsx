@@ -231,6 +231,7 @@ export function AppClient() {
 
   const refreshSettings = useCallback(async () => {
     if (auth.status !== "authenticated") return;
+    if (!canOperateLetters) return;
     try {
       const response = await authenticatedFetch("/api/settings");
       const body = await readJson<{ settings?: AppSettings; error?: string }>(response);
@@ -242,7 +243,7 @@ export function AppClient() {
     } catch (error) {
       setMessage(`Settings could not be loaded: ${clientErrorMessage(error)}`);
     }
-  }, [auth.status]);
+  }, [auth.status, canOperateLetters]);
 
   useEffect(() => {
     void refresh();
