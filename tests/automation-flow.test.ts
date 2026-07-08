@@ -200,6 +200,9 @@ test("upload UI offers automatic document generation and displays operational co
   assert.match(source, /name="autoSend"/);
   assert.match(source, /<input name="autoGenerate" type="hidden" value="on" \/>/);
   assert.match(source, /<input name="autoSend" type="hidden" value="on" \/>/);
+  assert.match(source, /validApplicantIds\.length > uploadLimits\.bulkApplicantIds/);
+  assert.match(source, /exceed the \$\{uploadLimits\.bulkApplicantIds\} applicant batch limit/);
+  assert.match(source, /Filter or split the Banner export before running generation\/email/);
   assert.match(source, /Full automation: import, generate DOCX\/PDF, send email, update status workbook\./);
   assert.match(source, /Upload Source of Truth and Run Automation/);
   assert.match(source, /Automation ready/);

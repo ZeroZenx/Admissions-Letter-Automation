@@ -18,6 +18,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Optionally generate DOCX/PDF files automatically for valid rows immediately after upload.
 - One-click upload runs full automation for valid rows: import, generate DOCX/PDF files, send generated PDFs through Microsoft Graph, and update operational status fields.
 - Upload automation preflights required `TemplateType` templates and exact placeholder mappings before generating or sending.
+- One-click upload blocks oversized generation/email batches before calling automation.
 - Preview/download generated DOCX/PDF files and download a bulk ZIP.
 - Audit individual and bulk generated-letter downloads by generated-letter ID.
 - Audit batch automation summaries with requested, generated, emailed, and failed counts.

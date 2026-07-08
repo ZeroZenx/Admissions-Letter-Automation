@@ -1,9 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { HttpError } from "../lib/auth";
+import { listLimits as sharedListLimits, uploadLimits as sharedUploadLimits } from "../lib/limits";
 import { formatBytes, listLimits, readPaginationParams, uploadLimits } from "../lib/request-limits";
 
 test("upload limits are explicit production controls", () => {
+  assert.strictEqual(uploadLimits, sharedUploadLimits);
+  assert.strictEqual(listLimits, sharedListLimits);
   assert.equal(uploadLimits.excelBytes, 10 * 1024 * 1024);
   assert.equal(uploadLimits.docxBytes, 15 * 1024 * 1024);
   assert.equal(uploadLimits.pdfAttachmentBytes, 10 * 1024 * 1024);

@@ -26,6 +26,7 @@ import {
   type ClientAuthState,
   type ClientUserRole
 } from "@/lib/client-auth";
+import { uploadLimits } from "@/lib/limits";
 
 type Applicant = {
   id: string;
@@ -350,19 +351,22 @@ export function AppClient() {
 
       let importedMessage = `Imported ${body.validRows} valid rows. ${body.invalidRows} need review.`;
       const blockedTemplates = body.preflight?.filter((item) => !item.ready) ?? [];
+      const validApplicantIds = body.validApplicantIds ?? [];
       if (blockedTemplates.length) {
         importedMessage = `${importedMessage} Automation preflight blocked ${blockedTemplates.map((item) => {
           const missing = item.missingPlaceholderNames?.length ? ` (${item.missingPlaceholderNames.join(", ")})` : "";
           return `${item.templateType}: ${item.status}${missing}`;
         }).join(", ")}.`;
-      } else if ((autoGenerate || autoSend) && body.validApplicantIds?.length) {
+      } else if ((autoGenerate || autoSend) && validApplicantIds.length > uploadLimits.bulkApplicantIds) {
+        importedMessage = `${importedMessage} Automation preflight blocked: ${validApplicantIds.length} valid rows exceed the ${uploadLimits.bulkApplicantIds} applicant batch limit. Filter or split the Banner export before running generation/email.`;
+      } else if ((autoGenerate || autoSend) && validApplicantIds.length) {
         try {
           const bulkFetch = autoSend ? authenticatedGraphFetch : authenticatedFetch;
           const generationResponse = await bulkFetch("/api/generate-bulk", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              applicantIds: body.validApplicantIds,
+              applicantIds: validApplicantIds,
               sendEmail: autoSend,
               subject: settings.email.defaultSubject,
               body: settings.email.defaultBody
