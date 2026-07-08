@@ -396,40 +396,59 @@ export function AppClient() {
   async function uploadTemplate(formData: FormData) {
     setBusy(true);
     setMessage("");
-    const response = await authenticatedFetch("/api/templates", { method: "POST", body: formData });
-    const body = await readJson<{ placeholders?: unknown[]; error?: string }>(response);
-    setBusy(false);
-    setMessage(response.ok ? `Template saved. Detected ${body.placeholders?.length ?? 0} placeholders.` : body.error ?? "Template upload failed.");
-    await refresh();
+    try {
+      const response = await authenticatedFetch("/api/templates", { method: "POST", body: formData });
+      const body = await readJson<{ placeholders?: unknown[]; error?: string }>(response);
+      setMessage(response.ok ? `Template saved. Detected ${body.placeholders?.length ?? 0} placeholders.` : body.error ?? "Template upload failed.");
+      await refresh();
+    } catch (error) {
+      setMessage(`Template upload failed: ${clientErrorMessage(error)}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function updateTemplateStatus(template: Template, isActive: boolean) {
     setBusy(true);
     setMessage("");
-    const response = await authenticatedFetch("/api/templates", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ templateId: template.id, isActive })
-    });
-    const body = await readJson<{ error?: string }>(response);
-    setBusy(false);
-    setMessage(response.ok ? `${template.template_type} template ${isActive ? "activated" : "deactivated"}.` : body.error ?? "Template status could not be updated.");
-    await refresh();
+    try {
+      const response = await authenticatedFetch("/api/templates", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: template.id, isActive })
+      });
+      const body = await readJson<{ error?: string }>(response);
+      setMessage(response.ok ? `${template.template_type} template ${isActive ? "activated" : "deactivated"}.` : body.error ?? "Template status could not be updated.");
+      await refresh();
+    } catch (error) {
+      setMessage(`Template status could not be updated: ${clientErrorMessage(error)}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function saveMappings(template: Template, formData: FormData) {
-    const mappings = template.placeholders.map((placeholder) => ({
-      placeholder: placeholder.name,
-      bannerField: String(formData.get(placeholder.name) || placeholder.name),
-      fallbackValue: String(formData.get(`${placeholder.name}:fallback`) || "")
-    }));
-    const response = await authenticatedFetch("/api/field-mappings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ templateId: template.id, mappings })
-    });
-    setMessage(response.ok ? "Field mappings saved." : "Could not save field mappings.");
-    await refresh();
+    setBusy(true);
+    setMessage("");
+    try {
+      const mappings = template.placeholders.map((placeholder) => ({
+        placeholder: placeholder.name,
+        bannerField: String(formData.get(placeholder.name) || placeholder.name),
+        fallbackValue: String(formData.get(`${placeholder.name}:fallback`) || "")
+      }));
+      const response = await authenticatedFetch("/api/field-mappings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templateId: template.id, mappings })
+      });
+      const body = await readJson<{ error?: string }>(response);
+      setMessage(response.ok ? "Field mappings saved." : body.error ?? "Could not save field mappings.");
+      await refresh();
+    } catch (error) {
+      setMessage(`Could not save field mappings: ${clientErrorMessage(error)}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function generateSelected() {
@@ -440,18 +459,25 @@ export function AppClient() {
       return;
     }
     setBusy(true);
-    const response = await authenticatedFetch("/api/generate-bulk", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ applicantIds: selectedApplicants })
-    });
-    const body = await readJson<{ results?: Array<{ ok: boolean }>; error?: string }>(response);
-    const failures = body.results?.filter((result: { ok: boolean }) => !result.ok).length ?? 0;
-    setBusy(false);
-    setMessage(
-      response.ok ? `Generation finished for ${selectedApplicants.length} applicants. ${failures} failed.` : body.error ?? "Generation failed."
-    );
-    await refresh();
+    setMessage("");
+    try {
+      const response = await authenticatedFetch("/api/generate-bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicantIds: selectedApplicants })
+      });
+      const body = await readJson<{ results?: Array<{ ok: boolean }>; error?: string }>(response);
+      const failures = body.results?.filter((result: { ok: boolean }) => !result.ok).length ?? 0;
+      setMessage(
+        response.ok ? `Generation finished for ${selectedApplicants.length} applicants. ${failures} failed.` : body.error ?? "Generation failed."
+      );
+      await refresh();
+    } catch (error) {
+      setMessage(`Generation failed: ${clientErrorMessage(error)}`);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function downloadLetter(letterId: string, type: "docx" | "pdf") {
@@ -1100,20 +1126,25 @@ function EmailQueue({
   async function sendEmail() {
     setBusy(true);
     setMessage("");
-    const response = await authenticatedGraphFetch("/api/send-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        generatedLetterId,
-        subject,
-        body,
-        resendReason: resendReason || undefined
-      })
-    });
-    const result = await readJson<{ error?: string; sent?: boolean; warning?: string }>(response);
-    setBusy(false);
-    setMessage(response.ok && result.sent ? result.warning ?? "Email sent and logged." : result.error ?? "Email could not be sent.");
-    if (response.ok) await onRefresh();
+    try {
+      const response = await authenticatedGraphFetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          generatedLetterId,
+          subject,
+          body,
+          resendReason: resendReason || undefined
+        })
+      });
+      const result = await readJson<{ error?: string; sent?: boolean; warning?: string }>(response);
+      setMessage(response.ok && result.sent ? result.warning ?? "Email sent and logged." : result.error ?? "Email could not be sent.");
+      if (response.ok) await onRefresh();
+    } catch (error) {
+      setMessage(`Email could not be sent: ${clientErrorMessage(error)}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -1265,19 +1296,24 @@ function SettingsPage({
   async function saveSettings() {
     setBusy(true);
     setMessage("");
-    const response = await authenticatedFetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft)
-    });
-    const body = await readJson<{ settings?: AppSettings; error?: string }>(response);
-    setBusy(false);
-    if (response.ok && body.settings) {
-      onSettings(body.settings);
-      setMessage("Settings saved.");
-      await onRefresh();
-    } else {
-      setMessage(body.error ?? "Settings could not be saved.");
+    try {
+      const response = await authenticatedFetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft)
+      });
+      const body = await readJson<{ settings?: AppSettings; error?: string }>(response);
+      if (response.ok && body.settings) {
+        onSettings(body.settings);
+        setMessage("Settings saved.");
+        await onRefresh();
+      } else {
+        setMessage(body.error ?? "Settings could not be saved.");
+      }
+    } catch (error) {
+      setMessage(`Settings could not be saved: ${clientErrorMessage(error)}`);
+    } finally {
+      setBusy(false);
     }
   }
 

@@ -256,6 +256,22 @@ test("manual bulk generation blocks oversized selections before calling the API"
   assert.ok(apiCallIndex > limitCheckIndex);
 });
 
+test("workspace actions release busy state when requests throw", async () => {
+  const source = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(source, /async function uploadTemplate\(formData: FormData\)/);
+  assert.match(source, /Template upload failed: \$\{clientErrorMessage\(error\)\}/);
+  assert.match(source, /Template status could not be updated: \$\{clientErrorMessage\(error\)\}/);
+  assert.match(source, /Could not save field mappings: \$\{clientErrorMessage\(error\)\}/);
+  assert.match(source, /Generation failed: \$\{clientErrorMessage\(error\)\}/);
+  assert.match(source, /Email could not be sent: \$\{clientErrorMessage\(error\)\}/);
+  assert.match(source, /Settings could not be saved: \$\{clientErrorMessage\(error\)\}/);
+  assert.match(source, /finally \{\n\s+setBusy\(false\);\n\s+\}\n\s+\}\n\n\s+async function updateTemplateStatus/);
+  assert.match(source, /finally \{\n\s+setBusy\(false\);\n\s+\}\n\s+\}\n\n\s+async function saveMappings/);
+  assert.match(source, /finally \{\n\s+setBusy\(false\);\n\s+\}\n\s+\}\n\n\s+async function generateSelected/);
+  assert.match(source, /finally \{\n\s+setBusy\(false\);\n\s+\}\n\s+\}\n\n\s+return \(/);
+});
+
 test("bulk generation can send generated PDFs and persist row-level failures", async () => {
   const source = await readFile("app/api/generate-bulk/route.ts", "utf8");
 
