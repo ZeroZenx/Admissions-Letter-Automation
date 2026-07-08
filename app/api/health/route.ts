@@ -37,7 +37,8 @@ export async function GET() {
   try {
     getDbEnv();
     await query("SELECT 1");
-    checks.database = { ok: true };
+    await verifyDatabaseSchema();
+    checks.database = { ok: true, detail: "connected; schema ready" };
   } catch (error) {
     checks.database = { ok: false, detail: errorMessage(error) };
   }
@@ -79,6 +80,48 @@ async function verifyStorageWritable() {
   await mkdir(path.dirname(probePath), { recursive: true });
   await writeFile(probePath, "ok");
   await unlink(probePath);
+}
+
+async function verifyDatabaseSchema() {
+  const expectedTables = ["users", "imports", "applicants", "templates", "field_mappings", "generated_letters", "email_logs", "audit_logs", "app_settings"];
+  const tableResult = await query<{ table_name: string }>(
+    `SELECT table_name
+       FROM information_schema.tables
+      WHERE table_schema = 'public'
+        AND table_name = ANY($1::text[])`,
+    [expectedTables]
+  );
+  const existingTables = new Set(tableResult.rows.map((row) => row.table_name));
+  const missingTables = expectedTables.filter((table) => !existingTables.has(table));
+  if (missingTables.length) {
+    throw new Error(`Database schema is incomplete. Run npm run db:setup. Missing tables: ${missingTables.join(", ")}.`);
+  }
+
+  const expectedColumns = [
+    ["applicants", "email_status"],
+    ["applicants", "sent_date"],
+    ["applicants", "word_file_name"],
+    ["applicants", "pdf_file_name"],
+    ["applicants", "processed_by_flow"],
+    ["applicants", "template_type"],
+    ["generated_letters", "pdf_storage_key"],
+    ["email_logs", "resend_reason"],
+    ["audit_logs", "applicant_student_id"]
+  ];
+  const columnResult = await query<{ table_name: string; column_name: string }>(
+    `SELECT table_name, column_name
+       FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = ANY($1::text[])`,
+    [[...new Set(expectedColumns.map(([table]) => table))]]
+  );
+  const existingColumns = new Set(columnResult.rows.map((row) => `${row.table_name}.${row.column_name}`));
+  const missingColumns = expectedColumns
+    .map(([table, column]) => `${table}.${column}`)
+    .filter((column) => !existingColumns.has(column));
+  if (missingColumns.length) {
+    throw new Error(`Database schema is incomplete. Run npm run db:setup. Missing columns: ${missingColumns.join(", ")}.`);
+  }
 }
 
 async function verifySofficeAvailable(soffice: string) {

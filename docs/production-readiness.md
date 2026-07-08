@@ -9,7 +9,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Persistent storage is configured for generated DOCX/PDF files.
 - LibreOffice is installed and `SOFFICE_PATH` points to the headless executable, or a replacement converter is implemented behind `lib/pdf-converter.ts`.
 - Windows VM deployments follow [windows-vm-deployment.md](windows-vm-deployment.md), including Windows storage paths, LibreOffice `soffice.exe`, and service account permissions.
-- `/api/health` returns `ok: true`, confirms database access, confirms generated-file storage is writable, and confirms the PDF converter executable responds.
+- `/api/health` returns `ok: true`, confirms database access and database schema readiness, confirms generated-file storage is writable, and confirms the PDF converter executable responds.
 - `/api/health` includes a passing `clientAuth` check with `Mail.Send` in the reported Graph scopes.
 - Container deployments run the application as a non-root user and report healthy through the `/api/health` Docker healthcheck.
 

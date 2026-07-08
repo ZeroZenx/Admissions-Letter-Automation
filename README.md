@@ -108,7 +108,7 @@ After deployment, verify runtime dependencies:
 curl /api/health
 ```
 
-The health check reports server authentication, browser Entra/Graph scope readiness, database connectivity, storage configuration, and PDF conversion configuration without exposing secrets.
+The health check reports server authentication, browser Entra/Graph scope readiness, database connectivity and schema readiness, storage configuration, and PDF conversion configuration without exposing secrets.
 
 ## Microsoft Entra Setup
 

@@ -25,6 +25,24 @@ test("health check proves storage and PDF converter runtime readiness", async ()
   assert.doesNotMatch(healthSource, /detail: storage\.APP_STORAGE_DIR/);
 });
 
+test("health check fails when required database schema is missing", async () => {
+  const healthSource = await readFile("app/api/health/route.ts", "utf8");
+  const readme = await readFile("README.md", "utf8");
+  const checklist = await readFile("docs/production-readiness.md", "utf8");
+
+  assert.match(healthSource, /verifyDatabaseSchema/);
+  assert.match(healthSource, /information_schema\.tables/);
+  assert.match(healthSource, /information_schema\.columns/);
+  assert.match(healthSource, /Missing tables:/);
+  assert.match(healthSource, /Missing columns:/);
+  assert.match(healthSource, /Run npm run db:setup/);
+  assert.match(healthSource, /app_settings/);
+  assert.match(healthSource, /applicants", "email_status"/);
+  assert.match(healthSource, /generated_letters", "pdf_storage_key"/);
+  assert.match(readme, /schema readiness/);
+  assert.match(checklist, /database schema readiness/);
+});
+
 test("health check redacts path and database details from failure output", async () => {
   const healthSource = await readFile("app/api/health/route.ts", "utf8");
   const checklist = await readFile("docs/production-readiness.md", "utf8");
