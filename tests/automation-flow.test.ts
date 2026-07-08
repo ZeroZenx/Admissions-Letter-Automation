@@ -23,6 +23,10 @@ test("applicant status export returns Banner workbook with operational columns",
   assert.match(source, /Content-Type": "application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet"/);
   assert.match(source, /Content-Disposition": `attachment; filename="costaatt-admissions-status-export\.xlsx"`/);
   assert.match(source, /counselorApplicantWhereClause/);
+  assert.match(source, /SELECT count\(\*\) AS count/);
+  assert.match(source, /exportCount > uploadLimits\.statusExportRows/);
+  assert.match(source, /exceeds the \$\{uploadLimits\.statusExportRows\} row export limit/);
+  assert.match(source, /Apply filters before exporting/);
   assert.match(source, /applicants\.exported/);
   assert.doesNotMatch(source, /storage_key/);
   assert.match(clientSource, /async function downloadApplicantExport\(\)/);

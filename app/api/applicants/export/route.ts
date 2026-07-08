@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { bannerFields, bannerToDbField } from "@/lib/banner-fields";
 import { query } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
+import { uploadLimits } from "@/lib/limits";
 import { counselorApplicantWhereClause, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
@@ -35,6 +36,22 @@ export async function GET(request: Request) {
     if (ownership.clause) {
       clauses.push(ownership.clause);
       params.push(...ownership.params);
+    }
+
+    const countResult = await query<{ count: string }>(
+      `SELECT count(*) AS count
+         FROM applicants
+         ${clauses.length ? `WHERE ${clauses.join(" AND ")}` : ""}`,
+      params
+    );
+    const exportCount = Number(countResult.rows[0]?.count ?? 0);
+    if (exportCount > uploadLimits.statusExportRows) {
+      return Response.json(
+        {
+          error: `Status export includes ${exportCount} rows, which exceeds the ${uploadLimits.statusExportRows} row export limit. Apply filters before exporting.`
+        },
+        { status: 413 }
+      );
     }
 
     const dbColumns = bannerFields.map((field) => bannerToDbField[field]);

@@ -12,6 +12,7 @@ test("upload limits are explicit production controls", () => {
   assert.equal(uploadLimits.pdfAttachmentBytes, 10 * 1024 * 1024);
   assert.equal(uploadLimits.bulkApplicantIds, 2000);
   assert.equal(uploadLimits.zipGeneratedLetterIds, 200);
+  assert.equal(uploadLimits.statusExportRows, 10000);
   assert.equal(listLimits.applicants, 500);
   assert.equal(listLimits.generatedLetters, 200);
   assert.equal(listLimits.emailLogs, 500);

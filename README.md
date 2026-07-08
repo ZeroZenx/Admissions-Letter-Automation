@@ -141,6 +141,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Production Graph email sending requires a delegated Microsoft Graph bearer token with `Mail.Send`.
 - Upload, email attachment, bulk generation, and ZIP download size limits are enforced server-side.
 - Dashboard list APIs enforce bounded `limit` and `offset` pagination.
+- Applicant status exports are row-limited server-side and require filters when the match set is too large.
 - Security headers are applied by `middleware.ts`.
 - Database integrity constraints and indexes are applied through `npm run db:setup`.
 - Query-performance indexes cover import review, automation preflight, generated letters, and email activity.
