@@ -238,6 +238,20 @@ test("upload automation failures release busy state and report an error", async 
   assert.match(source, /function clientErrorMessage\(error: unknown\)/);
 });
 
+test("manual bulk generation blocks oversized selections before calling the API", async () => {
+  const source = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(source, /async function generateSelected\(\)/);
+  assert.match(source, /selectedApplicants\.length > uploadLimits\.bulkApplicantIds/);
+  assert.match(source, /selected applicants exceed the \$\{uploadLimits\.bulkApplicantIds\} applicant batch limit/);
+  assert.match(source, /Clear the selection or split the batch before generating letters/);
+
+  const limitCheckIndex = source.indexOf("selectedApplicants.length > uploadLimits.bulkApplicantIds");
+  const apiCallIndex = source.indexOf('authenticatedFetch("/api/generate-bulk"');
+  assert.ok(limitCheckIndex > -1);
+  assert.ok(apiCallIndex > limitCheckIndex);
+});
+
 test("bulk generation can send generated PDFs and persist row-level failures", async () => {
   const source = await readFile("app/api/generate-bulk/route.ts", "utf8");
 

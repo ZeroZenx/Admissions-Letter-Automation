@@ -433,6 +433,12 @@ export function AppClient() {
   }
 
   async function generateSelected() {
+    if (selectedApplicants.length > uploadLimits.bulkApplicantIds) {
+      setMessage(
+        `${selectedApplicants.length} selected applicants exceed the ${uploadLimits.bulkApplicantIds} applicant batch limit. Clear the selection or split the batch before generating letters.`
+      );
+      return;
+    }
     setBusy(true);
     const response = await authenticatedFetch("/api/generate-bulk", {
       method: "POST",

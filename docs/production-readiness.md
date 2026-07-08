@@ -78,6 +78,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Confirm one-click upload runs full automation for valid rows: import, DOCX/PDF generation, Microsoft Graph email send, and applicant status updates.
 - Confirm upload automation is blocked with a clear preflight message when a required `TemplateType` is missing, inactive, or has unmapped placeholders.
 - Confirm one-click upload is blocked with a clear preflight message when valid rows exceed the applicant batch limit.
+- Confirm manual selected-letter generation is blocked with a clear message when selected rows exceed the applicant batch limit.
 - Confirm missing stored template files block generation with a clear re-upload message and applicant `ErrorMessage`.
 - Confirm generation failures write applicant `ErrorMessage` values and failed generated-letter statuses.
 - Confirm missing generated DOCX files block PDF conversion with a clear regenerate message and failed generated-letter status.
