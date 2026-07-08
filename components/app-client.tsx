@@ -481,74 +481,76 @@ export function AppClient() {
   }
 
   async function downloadLetter(letterId: string, type: "docx" | "pdf") {
-    const response = await authenticatedFetch(`/api/download/${letterId}?type=${type}`);
-    if (!response.ok) {
-      const body = await readJson<{ error?: string }>(response);
-      setMessage(body.error ?? `Could not download ${type.toUpperCase()} file.`);
-      return;
+    try {
+      const response = await authenticatedFetch(`/api/download/${letterId}?type=${type}`);
+      if (!response.ok) {
+        const body = await readJson<{ error?: string }>(response);
+        setMessage(body.error ?? `Could not download ${type.toUpperCase()} file.`);
+        return;
+      }
+      const blob = await response.blob();
+      triggerBlobDownload(blob, responseDownloadFileName(response, `${letterId}.${type}`));
+    } catch (error) {
+      setMessage(`Could not download ${type.toUpperCase()} file: ${clientErrorMessage(error)}`);
     }
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = responseDownloadFileName(response, `${letterId}.${type}`);
-    anchor.click();
-    URL.revokeObjectURL(url);
   }
 
   async function previewLetter(letterId: string) {
     const previewWindow = window.open("about:blank", "_blank");
-    const response = await authenticatedFetch(`/api/download/${letterId}?type=pdf&disposition=inline`);
-    if (!response.ok) {
+    try {
+      const response = await authenticatedFetch(`/api/download/${letterId}?type=pdf&disposition=inline`);
+      if (!response.ok) {
+        previewWindow?.close();
+        const body = await readJson<{ error?: string }>(response);
+        setMessage(body.error ?? "Could not preview PDF file.");
+        return;
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      if (previewWindow) {
+        previewWindow.location.href = url;
+      } else {
+        window.location.href = url;
+      }
+    } catch (error) {
       previewWindow?.close();
-      const body = await readJson<{ error?: string }>(response);
-      setMessage(body.error ?? "Could not preview PDF file.");
-      return;
-    }
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    if (previewWindow) {
-      previewWindow.location.href = url;
-    } else {
-      window.location.href = url;
+      setMessage(`Could not preview PDF file: ${clientErrorMessage(error)}`);
     }
   }
 
   async function downloadZip(letterIds: string[]) {
-    const response = await authenticatedFetch("/api/download-zip", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ generatedLetterIds: letterIds })
-    });
-    if (!response.ok) {
-      const body = await readJson<{ error?: string }>(response);
-      setMessage(body.error ?? "Could not download ZIP file.");
-      return;
+    try {
+      const response = await authenticatedFetch("/api/download-zip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generatedLetterIds: letterIds })
+      });
+      if (!response.ok) {
+        const body = await readJson<{ error?: string }>(response);
+        setMessage(body.error ?? "Could not download ZIP file.");
+        return;
+      }
+      const blob = await response.blob();
+      triggerBlobDownload(blob, "admissions-letters.zip");
+    } catch (error) {
+      setMessage(`Could not download ZIP file: ${clientErrorMessage(error)}`);
     }
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "admissions-letters.zip";
-    anchor.click();
-    URL.revokeObjectURL(url);
   }
 
   async function downloadApplicantExport() {
     const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
-    const response = await authenticatedFetch(`/api/applicants/export?${query.toString()}`);
-    if (!response.ok) {
-      const body = await readJson<{ error?: string }>(response);
-      setMessage(body.error ?? "Could not export applicant status workbook.");
-      return;
+    try {
+      const response = await authenticatedFetch(`/api/applicants/export?${query.toString()}`);
+      if (!response.ok) {
+        const body = await readJson<{ error?: string }>(response);
+        setMessage(body.error ?? "Could not export applicant status workbook.");
+        return;
+      }
+      const blob = await response.blob();
+      triggerBlobDownload(blob, "costaatt-admissions-status-export.xlsx");
+    } catch (error) {
+      setMessage(`Could not export applicant status workbook: ${clientErrorMessage(error)}`);
     }
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "costaatt-admissions-status-export.xlsx";
-    anchor.click();
-    URL.revokeObjectURL(url);
   }
 
   const title = visibleSections.find((section) => section.id === active)?.label ?? "Dashboard";
@@ -726,6 +728,18 @@ function responseDownloadFileName(response: Response, fallback: string) {
   if (quotedMatch?.[1]) return quotedMatch[1];
   const plainMatch = disposition.match(/filename=([^;]+)/i);
   return plainMatch?.[1]?.trim() || fallback;
+}
+
+function triggerBlobDownload(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  try {
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 function formatImportErrors(errors: unknown) {

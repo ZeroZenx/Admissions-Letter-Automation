@@ -60,5 +60,16 @@ test("letter downloads use server-provided safe filenames", async () => {
   assert.match(source, /catch \{\n\s+return fallback;/);
   assert.match(source, /const quotedMatch = disposition\.match/);
   assert.match(source, /const plainMatch = disposition\.match/);
-  assert.match(source, /anchor\.download = responseDownloadFileName\(response, `\$\{letterId\}\.\$\{type\}`\)/);
+  assert.match(source, /triggerBlobDownload\(blob, responseDownloadFileName\(response, `\$\{letterId\}\.\$\{type\}`\)\)/);
+  assert.match(source, /function triggerBlobDownload\(blob: Blob, fileName: string\)/);
+  assert.match(source, /finally \{\n\s+URL\.revokeObjectURL\(url\);/);
+});
+
+test("download actions report thrown client failures", async () => {
+  const source = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(source, /Could not download \$\{type\.toUpperCase\(\)\} file: \$\{clientErrorMessage\(error\)\}/);
+  assert.match(source, /Could not preview PDF file: \$\{clientErrorMessage\(error\)\}/);
+  assert.match(source, /Could not download ZIP file: \$\{clientErrorMessage\(error\)\}/);
+  assert.match(source, /Could not export applicant status workbook: \$\{clientErrorMessage\(error\)\}/);
 });
