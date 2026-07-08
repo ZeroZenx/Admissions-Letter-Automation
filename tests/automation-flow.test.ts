@@ -282,7 +282,7 @@ test("bulk generation can send generated PDFs and persist row-level failures", a
   assert.match(source, /authEnv\.AUTH_MODE !== "development" && !graphAccessToken/);
   assert.match(source, /Microsoft Graph token is required when sendEmail is true/);
   assert.match(source, /\/api\/send-email/);
-  assert.match(source, /const generationResult = await readResponseJson\(response\)/);
+  assert.match(source, /generationResult = await readResponseJson\(response\)/);
   assert.match(source, /result: await readResponseJson\(emailResponse\)/);
   assert.match(source, /UPDATE applicants SET error_message = \$1 WHERE id = \$2/);
   assert.match(source, /batch\.generated/);
@@ -299,6 +299,18 @@ test("bulk generation keeps row-level failures when internal APIs return non-jso
   assert.match(source, /try \{\n\s+return await response\.json\(\);/);
   assert.match(source, /catch \{\n\s+return \{ error: `\$\{response\.status\} \$\{response\.statusText \|\| "Non-JSON response"\}` \};/);
   assert.match(source, /const errorMessage = readError\(failure\)/);
+});
+
+test("bulk generation keeps row-level failures when internal API calls throw", async () => {
+  const source = await readFile("app/api/generate-bulk/route.ts", "utf8");
+
+  assert.match(source, /let generated = false/);
+  assert.match(source, /let generationResult: unknown = null/);
+  assert.match(source, /catch \(error\) \{\n\s+generationResult = \{ error: clientErrorMessage\(error\) \};/);
+  assert.match(source, /catch \(error\) \{\n\s+emailResult = \{ ok: false, result: \{ error: clientErrorMessage\(error\) \} \};/);
+  assert.match(source, /ok: generated && \(!emailResult \|\| emailResult\.ok\)/);
+  assert.match(source, /generated,/);
+  assert.match(source, /function clientErrorMessage\(error: unknown\)/);
 });
 
 test("email send route blocks pending duplicates before database conflicts", async () => {

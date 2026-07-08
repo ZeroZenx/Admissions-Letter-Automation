@@ -37,37 +37,49 @@ export async function POST(request: Request) {
     }
 
     for (const applicantId of body.applicantIds) {
-      const response = await fetch(`${origin}/api/generate-letter`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(authorization ? { Authorization: authorization } : {}),
-          ...(devRole ? { "x-dev-role": devRole } : {})
-        },
-        body: JSON.stringify({ applicantId, convertPdf: true })
-      });
-      const generationResult = await readResponseJson(response);
+      let generated = false;
+      let generationResult: unknown = null;
       let emailResult: { ok: boolean; result: unknown } | null = null;
 
-      if (response.ok && body.sendEmail) {
-        const emailResponse = await fetch(`${origin}/api/send-email`, {
+      try {
+        const response = await fetch(`${origin}/api/generate-letter`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             ...(authorization ? { Authorization: authorization } : {}),
-            ...(devRole ? { "x-dev-role": devRole } : {}),
-            ...(graphAccessToken ? { "x-graph-access-token": graphAccessToken } : {})
+            ...(devRole ? { "x-dev-role": devRole } : {})
           },
-          body: JSON.stringify({
-            generatedLetterId: generationResult.generatedLetterId,
-            subject: body.subject,
-            body: body.body
-          })
+          body: JSON.stringify({ applicantId, convertPdf: true })
         });
-        emailResult = { ok: emailResponse.ok, result: await readResponseJson(emailResponse) };
+        generated = response.ok;
+        generationResult = await readResponseJson(response);
+      } catch (error) {
+        generationResult = { error: clientErrorMessage(error) };
       }
 
-      if (!response.ok || (emailResult && !emailResult.ok)) {
+      if (generated && body.sendEmail) {
+        try {
+          const emailResponse = await fetch(`${origin}/api/send-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(authorization ? { Authorization: authorization } : {}),
+              ...(devRole ? { "x-dev-role": devRole } : {}),
+              ...(graphAccessToken ? { "x-graph-access-token": graphAccessToken } : {})
+            },
+            body: JSON.stringify({
+              generatedLetterId: readGeneratedLetterId(generationResult),
+              subject: body.subject,
+              body: body.body
+            })
+          });
+          emailResult = { ok: emailResponse.ok, result: await readResponseJson(emailResponse) };
+        } catch (error) {
+          emailResult = { ok: false, result: { error: clientErrorMessage(error) } };
+        }
+      }
+
+      if (!generated || (emailResult && !emailResult.ok)) {
         const failure = emailResult && !emailResult.ok ? emailResult.result : generationResult;
         const errorMessage = readError(failure);
         await query("UPDATE applicants SET error_message = $1 WHERE id = $2", [errorMessage, applicantId]);
@@ -75,8 +87,8 @@ export async function POST(request: Request) {
 
       results.push({
         applicantId,
-        ok: response.ok && (!emailResult || emailResult.ok),
-        generated: response.ok,
+        ok: generated && (!emailResult || emailResult.ok),
+        generated,
         emailed: emailResult?.ok ?? false,
         result: generationResult,
         emailResult
@@ -103,6 +115,17 @@ export async function POST(request: Request) {
 function readError(value: unknown) {
   if (value && typeof value === "object" && "error" in value && typeof value.error === "string") return value.error;
   return "Batch automation failed.";
+}
+
+function readGeneratedLetterId(value: unknown) {
+  if (value && typeof value === "object" && "generatedLetterId" in value && typeof value.generatedLetterId === "string") {
+    return value.generatedLetterId;
+  }
+  return "";
+}
+
+function clientErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Batch automation failed.";
 }
 
 async function readResponseJson(response: Response) {
