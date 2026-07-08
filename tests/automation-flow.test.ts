@@ -20,6 +20,14 @@ test("applicant status export returns Banner workbook with operational columns",
   assert.match(source, /workbook\.addWorksheet\("Admissions"\)/);
   assert.match(source, /bannerFields\.map/);
   assert.match(source, /bannerToDbField/);
+  assert.match(source, /worksheet\.getRow\(1\)\.font = \{ bold: true \}/);
+  assert.match(source, /worksheet\.autoFilter = \{/);
+  assert.match(source, /to: `\$\{excelColumnLetter\(bannerFields\.length\)\}1`/);
+  assert.match(source, /worksheet\.getColumn\(field\)\.numFmt = "yyyy-mm-dd"/);
+  assert.match(source, /const dateFields = new Set\(\["DateGenerated", "BirthDate", "SentDate"\]\)/);
+  assert.match(source, /exportValue\(field, row\[bannerToDbField\[field\]\]\)/);
+  assert.match(source, /function exportDateValue\(value: unknown\)/);
+  assert.match(source, /new Date\(Date\.UTC\(Number\(match\[1\]\), Number\(match\[2\]\) - 1, Number\(match\[3\]\)\)\)/);
   assert.match(source, /Content-Type": "application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet"/);
   assert.match(source, /Content-Disposition": `attachment; filename="costaatt-admissions-status-export\.xlsx"`/);
   assert.match(source, /counselorApplicantWhereClause/);

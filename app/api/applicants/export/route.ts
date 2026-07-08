@@ -17,6 +17,8 @@ const filterColumns: Record<string, string> = {
   program: "program"
 };
 
+const dateFields = new Set(["DateGenerated", "BirthDate", "SentDate"]);
+
 export async function GET(request: Request) {
   try {
     const user = await requireAuth(request);
@@ -68,9 +70,17 @@ export async function GET(request: Request) {
     workbook.created = new Date();
     const worksheet = workbook.addWorksheet("Admissions");
     worksheet.columns = bannerFields.map((field) => ({ header: field, key: field, width: Math.max(14, field.length + 2) }));
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.autoFilter = {
+      from: "A1",
+      to: `${excelColumnLetter(bannerFields.length)}1`
+    };
+    for (const field of dateFields) {
+      worksheet.getColumn(field).numFmt = "yyyy-mm-dd";
+    }
 
     for (const row of result.rows) {
-      worksheet.addRow(Object.fromEntries(bannerFields.map((field) => [field, exportValue(row[bannerToDbField[field]])])));
+      worksheet.addRow(Object.fromEntries(bannerFields.map((field) => [field, exportValue(field, row[bannerToDbField[field]])])));
     }
     worksheet.views = [{ state: "frozen", ySplit: 1 }];
 
@@ -91,9 +101,28 @@ export async function GET(request: Request) {
   }
 }
 
-function exportValue(value: unknown) {
+function exportValue(field: string, value: unknown) {
   if (value == null) return "";
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (dateFields.has(field)) return exportDateValue(value);
   if (typeof value === "boolean") return value ? "true" : "false";
   return String(value);
+}
+
+function exportDateValue(value: unknown) {
+  if (value instanceof Date) return value;
+  const text = String(value).trim();
+  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return text;
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+}
+
+function excelColumnLetter(columnNumber: number) {
+  let column = columnNumber;
+  let letter = "";
+  while (column > 0) {
+    const remainder = (column - 1) % 26;
+    letter = String.fromCharCode(65 + remainder) + letter;
+    column = Math.floor((column - 1) / 26);
+  }
+  return letter;
 }
