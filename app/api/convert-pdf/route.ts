@@ -3,6 +3,7 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
 import { convertDocxToPdf } from "@/lib/pdf-converter";
+import { letterDownloadFileName } from "@/lib/download-filenames";
 import { query } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
 import { storageFileExists } from "@/lib/storage";
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
     }
 
     const pdfStorageKey = await convertDocxToPdf(letter.docx_storage_key);
-    const pdfFileName = `${letter.student_id}-${letter.template_type}.pdf`;
+    const pdfFileName = letterDownloadFileName(letter.student_id, letter.template_type, "pdf");
     await query("UPDATE generated_letters SET pdf_storage_key = $1, status = 'pdf_generated' WHERE id = $2", [
       pdfStorageKey,
       body.generatedLetterId

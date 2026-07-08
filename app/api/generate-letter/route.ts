@@ -3,6 +3,7 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { HttpError, requireAuth } from "@/lib/auth";
 import { generateDocxFromTemplate } from "@/lib/docx-generate";
+import { letterDownloadFileName } from "@/lib/download-filenames";
 import { buildLetterValues } from "@/lib/letter-values";
 import { convertDocxToPdf } from "@/lib/pdf-converter";
 import { query } from "@/lib/db";
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
     const templateBuffer = await readStorageBuffer(String(template.storage_key));
     const values = buildLetterValues(applicant, mappings.rows);
     const docx = generateDocxFromTemplate(templateBuffer, values);
-    const fileBase = `${applicant.student_id}-${applicant.template_type}.docx`;
+    const fileBase = letterDownloadFileName(String(applicant.student_id), String(applicant.template_type), "docx");
     const docxStorageKey = await saveBuffer("generated", fileBase, docx);
 
     const letterResult = await query<{ id: string }>(
