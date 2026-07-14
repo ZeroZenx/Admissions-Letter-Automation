@@ -60,10 +60,17 @@ export function validateBannerRow(row: ImportRow) {
   const errors = requiredBannerFields
     .filter((field) => !row[field]?.trim())
     .map((field) => `${field} is required`);
+  if (row.Email?.trim() && !isEmailAddress(row.Email)) {
+    errors.push("Email must be a valid email address");
+  }
   if (row.TemplateType?.trim() && !isTemplateTypeCode(row.TemplateType)) {
     errors.push("TemplateType must contain only letters, numbers, underscores, or hyphens, and be 80 characters or fewer");
   }
   return errors;
+}
+
+function isEmailAddress(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 export function rowToApplicantColumns(row: ImportRow, importId: string) {

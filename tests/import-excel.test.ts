@@ -85,6 +85,21 @@ test("validateBannerRow reports all required field gaps", () => {
   assert.deepEqual(errors, ["StudentID is required", "LastName is required", "Email is required"]);
 });
 
+test("validateBannerRow reports malformed email addresses before automation", () => {
+  const errors = validateBannerRow({
+    StudentID: "A001",
+    FirstName: "Maya",
+    LastName: "Singh",
+    Email: "maya.example.edu",
+    Program: "Nursing",
+    Campus: "City",
+    AdmissionStatus: "Admitted",
+    TemplateType: "UOFFER"
+  });
+
+  assert.deepEqual(errors, ["Email must be a valid email address"]);
+});
+
 test("readAdmissionsWorksheet normalizes and validates Banner TemplateType codes", async () => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Admissions");
