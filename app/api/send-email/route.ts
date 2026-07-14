@@ -113,10 +113,18 @@ export async function POST(request: Request) {
 
     const pdf = await readStorageBuffer(letter.pdf_storage_key);
     if (pdf.byteLength > uploadLimits.pdfAttachmentBytes) {
-      return NextResponse.json(
-        { error: `Generated PDF exceeds the ${formatBytes(uploadLimits.pdfAttachmentBytes)} email attachment limit.` },
-        { status: 413 }
-      );
+      const errorMessage = `Generated PDF exceeds the ${formatBytes(uploadLimits.pdfAttachmentBytes)} email attachment limit.`;
+      await query("UPDATE applicants SET email_status = 'Failed', error_message = $1 WHERE id = $2", [
+        errorMessage,
+        letter.applicant_id
+      ]);
+      await audit("email.blocked_oversized_pdf", "applicants", {
+        studentId: letter.student_id,
+        recipient: letter.email,
+        generatedLetterId: body.generatedLetterId,
+        error: errorMessage
+      }, letter.applicant_id, dbUser.id).catch(() => undefined);
+      return NextResponse.json({ error: errorMessage }, { status: 413 });
     }
     const sanitizedBody = sanitizeEmailHtml(body.body);
     const emailLog = await query<{ id: string }>(

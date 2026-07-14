@@ -368,6 +368,21 @@ test("email send route records missing generated PDFs before sending", async () 
   assert.ok(emailLogIndex > missingPdfIndex);
 });
 
+test("email send route records oversized generated PDFs before sending", async () => {
+  const source = await readFile("app/api/send-email/route.ts", "utf8");
+
+  assert.match(source, /pdf\.byteLength > uploadLimits\.pdfAttachmentBytes/);
+  assert.match(source, /const errorMessage = `Generated PDF exceeds the \$\{formatBytes\(uploadLimits\.pdfAttachmentBytes\)\} email attachment limit\.`/);
+  assert.match(source, /UPDATE applicants SET email_status = 'Failed', error_message = \$1 WHERE id = \$2/);
+  assert.match(source, /email\.blocked_oversized_pdf/);
+  assert.match(source, /return NextResponse\.json\(\{ error: errorMessage \}, \{ status: 413 \}\)/);
+
+  const oversizedPdfIndex = source.indexOf("pdf.byteLength > uploadLimits.pdfAttachmentBytes");
+  const emailLogIndex = source.indexOf("INSERT INTO email_logs");
+  assert.ok(oversizedPdfIndex > -1);
+  assert.ok(emailLogIndex > oversizedPdfIndex);
+});
+
 test("email send route does not mark delivered mail failed when sent audit logging fails", async () => {
   const source = await readFile("app/api/send-email/route.ts", "utf8");
 
