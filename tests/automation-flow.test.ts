@@ -353,6 +353,9 @@ test("email send route blocks pending duplicates before database conflicts", asy
 test("email send route records missing generated PDFs before sending", async () => {
   const source = await readFile("app/api/send-email/route.ts", "utf8");
 
+  assert.match(source, /if \(!letter\.pdf_storage_key\) \{/);
+  assert.match(source, /const errorMessage = "Generate the PDF before sending email\."/);
+  assert.match(source, /email\.blocked_pdf_not_generated/);
   assert.match(source, /storageFileExists\(letter\.pdf_storage_key\)/);
   assert.match(source, /Generated PDF file was not found in storage\. Regenerate the letter before sending email\./);
   assert.match(source, /UPDATE applicants SET email_status = 'Failed', error_message = \$1 WHERE id = \$2/);

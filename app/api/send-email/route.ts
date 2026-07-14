@@ -52,7 +52,20 @@ export async function POST(request: Request) {
     const letter = letterResult.rows[0];
     if (!letter) return NextResponse.json({ error: "Generated letter not found." }, { status: 404 });
     enforceApplicantOwnership(user, dbUser.id, letter);
-    if (!letter.pdf_storage_key) return NextResponse.json({ error: "Generate the PDF before sending email." }, { status: 400 });
+    if (!letter.pdf_storage_key) {
+      const errorMessage = "Generate the PDF before sending email.";
+      await query("UPDATE applicants SET email_status = 'Failed', error_message = $1 WHERE id = $2", [
+        errorMessage,
+        letter.applicant_id
+      ]);
+      await audit("email.blocked_pdf_not_generated", "applicants", {
+        studentId: letter.student_id,
+        recipient: letter.email,
+        generatedLetterId: body.generatedLetterId,
+        error: errorMessage
+      }, letter.applicant_id, dbUser.id).catch(() => undefined);
+      return NextResponse.json({ error: errorMessage }, { status: 400 });
+    }
 
     const settings = await getAppSettings();
     const stalePendingMessage = "Pending email send timed out before completion.";
