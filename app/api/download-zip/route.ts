@@ -44,6 +44,9 @@ export async function POST(request: Request) {
     if (requestedIds.size) {
       return NextResponse.json({ error: "One or more generated letters were not found." }, { status: 404 });
     }
+    for (const letter of result.rows) {
+      enforceApplicantOwnership(user, dbUser.id, letter);
+    }
     const missingFiles = [];
     for (const letter of result.rows) {
       const key = letter.pdf_storage_key ?? letter.docx_storage_key;
@@ -59,7 +62,6 @@ export async function POST(request: Request) {
     archive.pipe(stream);
 
     for (const letter of result.rows) {
-      enforceApplicantOwnership(user, dbUser.id, letter);
       const key = letter.pdf_storage_key ?? letter.docx_storage_key;
       const extension = letter.pdf_storage_key ? "pdf" : "docx";
       archive.file(storagePath(key), {

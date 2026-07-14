@@ -24,6 +24,20 @@ test("download ZIP route rejects partial archives and audits bulk downloads", as
   assert.ok(queryIndex > duplicateCheckIndex);
 });
 
+test("download ZIP route enforces ownership before probing generated file storage", async () => {
+  const source = await readFile("app/api/download-zip/route.ts", "utf8");
+
+  const ownershipIndex = source.indexOf("enforceApplicantOwnership(user, dbUser.id, letter)");
+  const missingFilesIndex = source.indexOf("const missingFiles = []");
+  const storageExistsIndex = source.indexOf("storageFileExists(key)");
+  const archiveIndex = source.indexOf('const archive = archiver("zip"');
+
+  assert.ok(ownershipIndex > -1);
+  assert.ok(missingFilesIndex > ownershipIndex);
+  assert.ok(storageExistsIndex > ownershipIndex);
+  assert.ok(archiveIndex > storageExistsIndex);
+});
+
 test("individual download route audits downloads without returning storage paths", async () => {
   const source = await readFile("app/api/download/[id]/route.ts", "utf8");
 
