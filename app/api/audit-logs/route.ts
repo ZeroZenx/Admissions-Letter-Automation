@@ -57,11 +57,12 @@ function sanitizeAuditDetails(value: unknown): unknown {
 }
 
 function isSensitiveAuditKey(key: string) {
-  return /(access)?token|authorization|body|content|attachment|storage_?key|path/i.test(key);
+  return /(access)?token|authorization|body|content|attachment|storage_?key|path|recipient|email/i.test(key);
 }
 
 function redactSensitiveAuditText(value: string) {
   return value
+    .replace(/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/gi, "[redacted-email]")
     .replace(/postgres(?:ql)?:\/\/[^\s"'<>]+/gi, "[redacted-database-url]")
     .replace(/[A-Z]:[\\/][^\s"'<>]+/g, "[redacted-path]")
     .replace(/\/(?:Users|var|private|tmp|app|srv|opt|etc|home)\/[^\s"'<>]+/g, "[redacted-path]");

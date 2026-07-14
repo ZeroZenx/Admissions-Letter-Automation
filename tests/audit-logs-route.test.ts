@@ -25,8 +25,10 @@ test("audit log details are sanitized before browser exposure", async () => {
   assert.match(routeSource, /details: sanitizeAuditDetails\(row\.details\)/);
   assert.match(routeSource, /function sanitizeAuditDetails\(value: unknown\): unknown/);
   assert.match(routeSource, /function isSensitiveAuditKey\(key: string\)/);
-  assert.match(routeSource, /access\)\?token\|authorization\|body\|content\|attachment\|storage_\?key\|path/);
+  assert.match(routeSource, /access\)\?token\|authorization\|body\|content\|attachment\|storage_\?key\|path\|recipient\|email/);
   assert.match(routeSource, /redactSensitiveAuditText/);
+  assert.match(routeSource, /redacted-email/);
+  assert.match(routeSource, /\[A-Z0-9\._%\+\\-\]\+@\[A-Z0-9\.\\-\]\+\\\.\[A-Z\]\{2,\}/);
   assert.match(routeSource, /redacted-database-url/);
   assert.match(routeSource, /redacted-path/);
   assert.match(checklist, /Audit log details are sanitized before being returned to the browser/);
