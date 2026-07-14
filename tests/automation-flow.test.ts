@@ -148,9 +148,24 @@ test("PDF conversion updates applicant operational PDF filename", async () => {
   assert.match(source, /a\.template_type/);
   assert.match(source, /import \{ letterDownloadFileName \} from "@\/lib\/download-filenames"/);
   assert.match(source, /const pdfFileName = letterDownloadFileName\(letter\.student_id, letter\.template_type, "pdf"\)/);
+  assert.match(source, /UPDATE generated_letters SET pdf_storage_key = \$1, status = 'pdf_generated', error_message = null WHERE id = \$2/);
   assert.match(source, /UPDATE applicants SET pdf_file_name = \$1, error_message = null, processed_by_flow = true WHERE id = \$2/);
   assert.match(source, /pdfFileName/);
   assert.match(converterSource, /storageKeyFromPath\(pdfPath\)/);
+});
+
+test("PDF conversion clears stale generated-letter errors after a successful retry", async () => {
+  const source = await readFile("app/api/convert-pdf/route.ts", "utf8");
+
+  assert.match(source, /status = 'pdf_generated', error_message = null/);
+
+  const successIndex = source.indexOf("UPDATE generated_letters SET pdf_storage_key = $1, status = 'pdf_generated', error_message = null");
+  const applicantSuccessIndex = source.indexOf("UPDATE applicants SET pdf_file_name = $1, error_message = null, processed_by_flow = true");
+  const failureIndex = source.indexOf("UPDATE generated_letters SET status = 'failed', error_message = $1");
+
+  assert.ok(successIndex > -1);
+  assert.ok(applicantSuccessIndex > successIndex);
+  assert.ok(failureIndex > applicantSuccessIndex);
 });
 
 test("PDF conversion records generated-letter and applicant failures", async () => {

@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
     const pdfStorageKey = await convertDocxToPdf(letter.docx_storage_key);
     const pdfFileName = letterDownloadFileName(letter.student_id, letter.template_type, "pdf");
-    await query("UPDATE generated_letters SET pdf_storage_key = $1, status = 'pdf_generated' WHERE id = $2", [
+    await query("UPDATE generated_letters SET pdf_storage_key = $1, status = 'pdf_generated', error_message = null WHERE id = $2", [
       pdfStorageKey,
       body.generatedLetterId
     ]);
