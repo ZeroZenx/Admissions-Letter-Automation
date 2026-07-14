@@ -290,6 +290,8 @@ test("bulk generation can send generated PDFs and persist row-level failures", a
 
   assert.match(source, /applicantIds: z\.array\(z\.string\(\)\.uuid\(\)\)\.min\(1\)\.max\(uploadLimits\.bulkApplicantIds\)/);
   assert.match(source, /sendEmail: z\.boolean\(\)\.default\(false\)/);
+  assert.match(source, /hasDuplicateApplicantIds\(body\.applicantIds\)/);
+  assert.match(source, /Bulk automation applicantIds must be unique\./);
   assert.match(source, /const authEnv = getAuthEnv\(\)/);
   assert.match(source, /x-graph-access-token/);
   assert.match(source, /authEnv\.AUTH_MODE !== "development" && !graphAccessToken/);
@@ -304,6 +306,13 @@ test("bulk generation can send generated PDFs and persist row-level failures", a
   assert.match(source, /generatedCount/);
   assert.match(source, /emailedCount/);
   assert.match(source, /failedCount/);
+
+  const duplicateCheckIndex = source.indexOf("hasDuplicateApplicantIds(body.applicantIds)");
+  const preflightIndex = source.indexOf("buildBulkAutomationPreflight(body.applicantIds, user, dbUser.id)");
+  const firstGenerationIndex = source.indexOf('fetch(`${origin}/api/generate-letter`');
+  assert.ok(duplicateCheckIndex > -1);
+  assert.ok(preflightIndex > duplicateCheckIndex);
+  assert.ok(firstGenerationIndex > duplicateCheckIndex);
 });
 
 test("bulk generation preflights selected applicants before starting automation", async () => {

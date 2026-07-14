@@ -32,6 +32,9 @@ export async function POST(request: Request) {
     if (body.sendEmail && (!body.subject || !body.body)) {
       return NextResponse.json({ error: "subject and body are required when sendEmail is true." }, { status: 400 });
     }
+    if (hasDuplicateApplicantIds(body.applicantIds)) {
+      return NextResponse.json({ error: "Bulk automation applicantIds must be unique." }, { status: 400 });
+    }
     if (body.sendEmail && authEnv.AUTH_MODE !== "development" && !graphAccessToken) {
       return NextResponse.json({ error: "Microsoft Graph token is required when sendEmail is true." }, { status: 401 });
     }
@@ -234,4 +237,8 @@ function formatBlockedTemplate(template: BulkTemplatePreflight) {
 
 function hasValidationErrors(value: unknown) {
   return Array.isArray(value) && value.length > 0;
+}
+
+function hasDuplicateApplicantIds(applicantIds: string[]) {
+  return new Set(applicantIds).size !== applicantIds.length;
 }
