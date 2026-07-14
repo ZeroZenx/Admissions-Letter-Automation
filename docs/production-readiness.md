@@ -16,7 +16,7 @@ Use this checklist before enabling COSTAATT staff access.
 ## Microsoft Entra
 
 - App registration exists in COSTAATT tenant.
-- Redirect URI includes the production origin and `/login`.
+- Single-page application redirect URIs include both the production origin and the production `/login` URL.
 - API scope is exposed, for example `api://<client-id>/access_as_user`.
 - App roles exist: `Admin`, `Admissions Supervisor`, `Counselor`, `Viewer`.
 - Users or groups are assigned to roles.
@@ -32,7 +32,7 @@ Use this checklist before enabling COSTAATT staff access.
 - `NEXT_PUBLIC_AUTH_MODE=entra`
 - `NEXT_PUBLIC_ENTRA_TENANT_ID` is set.
 - `NEXT_PUBLIC_ENTRA_CLIENT_ID` is set.
-- `NEXT_PUBLIC_ENTRA_REDIRECT_URI` matches the deployed origin.
+- `NEXT_PUBLIC_ENTRA_REDIRECT_URI` is set and matches the deployed origin used by staff, for example `https://admissions.example.edu`.
 - `NEXT_PUBLIC_ENTRA_API_SCOPE` matches the exposed API scope.
 - `NEXT_PUBLIC_GRAPH_SCOPES=User.Read Mail.Send`
 - `APP_STORAGE_DIR` points to persistent storage.

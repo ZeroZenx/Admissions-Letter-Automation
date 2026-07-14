@@ -11,6 +11,8 @@ test("Windows VM deployment guide documents native installation", async () => {
   assert.match(guide, /SOFFICE_PATH=C:\/Program Files\/LibreOffice\/program\/soffice\.exe/);
   assert.match(guide, /APP_STORAGE_DIR=C:\/COSTAATT\/AdmissionsLetterStorage/);
   assert.match(guide, /npm run start -- -H 127\.0\.0\.1 -p 6001/);
+  assert.match(guide, /http:\/\/localhost:6001\/login/);
+  assert.match(guide, /NEXT_PUBLIC_ENTRA_REDIRECT_URI` set to the origin/);
   assert.match(guide, /Windows service manager/);
 });
 

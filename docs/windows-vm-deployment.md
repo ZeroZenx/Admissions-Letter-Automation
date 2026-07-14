@@ -60,6 +60,7 @@ NEXT_PUBLIC_ENTRA_REDIRECT_URI=http://localhost:6001
 ```
 
 For production Entra sign-in, change `AUTH_MODE` and `NEXT_PUBLIC_AUTH_MODE` to `entra`, then set all `ENTRA_*` and `NEXT_PUBLIC_ENTRA_*` values listed in `.env.example`.
+In Microsoft Entra, register both the VM app origin, such as `http://localhost:6001`, and the `/login` URL, such as `http://localhost:6001/login`, as single-page application redirect URIs. Keep `NEXT_PUBLIC_ENTRA_REDIRECT_URI` set to the origin users open in the browser.
 
 5. Create the storage directory:
 

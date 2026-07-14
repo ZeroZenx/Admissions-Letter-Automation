@@ -8,6 +8,7 @@ test("health check validates browser Entra and Graph send configuration", async 
 
   assert.match(envSource, /getClientAuthEnv/);
   assert.match(envSource, /NEXT_PUBLIC_GRAPH_SCOPES/);
+  assert.match(envSource, /NEXT_PUBLIC_ENTRA_REDIRECT_URI/);
   assert.match(envSource, /Mail\.Send/);
   assert.match(healthSource, /checks\.clientAuth/);
   assert.match(healthSource, /graphScopes=/);

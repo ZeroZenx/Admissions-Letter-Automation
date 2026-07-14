@@ -57,6 +57,7 @@ export function getClientAuthEnv() {
     const missing = [
       env.NEXT_PUBLIC_ENTRA_TENANT_ID ? "" : "NEXT_PUBLIC_ENTRA_TENANT_ID",
       env.NEXT_PUBLIC_ENTRA_CLIENT_ID ? "" : "NEXT_PUBLIC_ENTRA_CLIENT_ID",
+      env.NEXT_PUBLIC_ENTRA_REDIRECT_URI ? "" : "NEXT_PUBLIC_ENTRA_REDIRECT_URI",
       env.NEXT_PUBLIC_ENTRA_API_SCOPE ? "" : "NEXT_PUBLIC_ENTRA_API_SCOPE",
       graphScopes.includes("Mail.Send") ? "" : "Mail.Send graph scope"
     ].filter(Boolean);
