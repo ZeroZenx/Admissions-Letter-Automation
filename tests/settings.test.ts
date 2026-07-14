@@ -19,6 +19,13 @@ test("settings expose stale pending send timeout control", async () => {
   const windowsGuide = await readFile("docs/windows-vm-deployment.md", "utf8");
 
   assert.match(settingsSource, /email\.stalePendingMinutes/);
+  assert.match(settingsSource, /boundedStringSetting/);
+  assert.match(settingsSource, /boundedNumberSetting/);
+  assert.match(settingsSource, /enumSetting/);
+  assert.match(settingsSource, /defaultSubjectMaxLength: 160/);
+  assert.match(settingsSource, /defaultBodyMaxLength: 12000/);
+  assert.match(settingsSource, /stalePendingMinutesMin: 5/);
+  assert.match(settingsSource, /stalePendingMinutesMax: 1440/);
   assert.match(routeSource, /requireAuth\(request, \["Admin", "Admissions Supervisor", "Counselor"\]\)/);
   assert.match(routeSource, /stalePendingMinutes: z\.coerce\.number\(\)\.int\(\)\.min\(5\)\.max\(1440\)/);
   assert.match(routeSource, /email\.stalePendingMinutes/);

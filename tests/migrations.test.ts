@@ -26,6 +26,7 @@ test("database setup script includes operational integrity migration", async () 
   assert.match(packageJson.scripts["db:migrate"], /011_template_name_integrity\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /012_field_mapping_fallback_integrity\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /013_upload_filename_integrity\.sql/);
+  assert.match(packageJson.scripts["db:migrate"], /014_app_settings_integrity\.sql/);
 });
 
 test("query performance migration covers operational dashboard and automation queries", async () => {
@@ -136,4 +137,17 @@ test("upload filename migration bounds persisted upload names", async () => {
   assert.ok(sql.includes("uploaded_file_name !~ '^[^[:cntrl:]/\\\\]{1,255}$'"));
   assert.ok(sql.includes("original_file_name !~ '^[^[:cntrl:]/\\\\]{1,255}$'"));
   assert.match(sql, /cannot contain path separators or control characters/);
+});
+
+test("app settings migration enforces known bounded settings", async () => {
+  const sql = await readFile("db/migrations/014_app_settings_integrity.sql", "utf8");
+
+  assert.match(sql, /app_settings_known_key_value_chk/);
+  assert.match(sql, /email\.stalePendingMinutes', '"30"'::jsonb/);
+  assert.match(sql, /key IN \('email\.defaultSubject', 'email\.defaultBody', 'email\.stalePendingMinutes', 'pdf\.converter'\)/);
+  assert.match(sql, /jsonb_typeof\(value\) = 'string'/);
+  assert.match(sql, /char_length\(value #>> '\{\}'\) BETWEEN 1 AND 160/);
+  assert.match(sql, /char_length\(value #>> '\{\}'\) BETWEEN 1 AND 12000/);
+  assert.match(sql, /\(value #>> '\{\}'\)::int BETWEEN 5 AND 1440/);
+  assert.match(sql, /\(value #>> '\{\}'\) = 'libreoffice'/);
 });

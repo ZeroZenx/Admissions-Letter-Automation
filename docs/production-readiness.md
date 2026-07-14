@@ -63,6 +63,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Database constraints enforce known import, applicant email, generated letter, and email log statuses.
 - Partial unique indexes block duplicate original email sends, including regenerated letters for the same applicant, while allowing authorized resends with a reason.
 - Settings changes are restricted to Admin and Admissions Supervisor roles and are audited.
+- Stored application settings are constrained to known keys, string values, bounded email content lengths, stale pending timeout range, and supported PDF converter.
 - Template activation changes are restricted to Admin and Admissions Supervisor roles and are audited.
 - Template mapping fallback values are only exposed to Admin and Admissions Supervisor roles.
 - Template names are limited to 160 characters and cannot contain control characters.

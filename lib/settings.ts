@@ -29,6 +29,13 @@ const settingKeys = {
   "pdf.converter": defaultSettings.pdf.converter
 } as const;
 
+const settingLimits = {
+  defaultSubjectMaxLength: 160,
+  defaultBodyMaxLength: 12000,
+  stalePendingMinutesMin: 5,
+  stalePendingMinutesMax: 1440
+};
+
 export async function getAppSettings() {
   const result = await query<{ key: keyof typeof settingKeys; value: unknown }>(
     "SELECT key, value FROM app_settings WHERE key = ANY($1::text[])",
@@ -39,12 +46,25 @@ export async function getAppSettings() {
 
   return {
     email: {
-      defaultSubject: stringifySetting(values.get("email.defaultSubject"), defaultSettings.email.defaultSubject),
-      defaultBody: stringifySetting(values.get("email.defaultBody"), defaultSettings.email.defaultBody),
-      stalePendingMinutes: numberSetting(values.get("email.stalePendingMinutes"), defaultSettings.email.stalePendingMinutes)
+      defaultSubject: boundedStringSetting(
+        values.get("email.defaultSubject"),
+        defaultSettings.email.defaultSubject,
+        settingLimits.defaultSubjectMaxLength
+      ),
+      defaultBody: boundedStringSetting(
+        values.get("email.defaultBody"),
+        defaultSettings.email.defaultBody,
+        settingLimits.defaultBodyMaxLength
+      ),
+      stalePendingMinutes: boundedNumberSetting(
+        values.get("email.stalePendingMinutes"),
+        defaultSettings.email.stalePendingMinutes,
+        settingLimits.stalePendingMinutesMin,
+        settingLimits.stalePendingMinutesMax
+      )
     },
     pdf: {
-      converter: stringifySetting(values.get("pdf.converter"), defaultSettings.pdf.converter)
+      converter: enumSetting(values.get("pdf.converter"), defaultSettings.pdf.converter, ["libreoffice"])
     }
   } satisfies AppSettings;
 }
@@ -70,11 +90,17 @@ export async function upsertAppSettings(settings: AppSettings, updatedBy: string
   }
 }
 
-function stringifySetting(value: unknown, fallback: string) {
-  return typeof value === "string" ? value : fallback;
+function boundedStringSetting(value: unknown, fallback: string, maxLength: number) {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  return trimmed.length > 0 && trimmed.length <= maxLength ? trimmed : fallback;
 }
 
-function numberSetting(value: unknown, fallback: number) {
+function boundedNumberSetting(value: unknown, fallback: number, min: number, max: number) {
   const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
-  return Number.isFinite(parsed) ? parsed : fallback;
+  return Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
+}
+
+function enumSetting<T extends string>(value: unknown, fallback: T, allowed: readonly T[]) {
+  return typeof value === "string" && allowed.includes(value as T) ? (value as T) : fallback;
 }
