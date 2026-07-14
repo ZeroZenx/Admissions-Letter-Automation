@@ -5,6 +5,8 @@ import { isTemplateTypeCode, normalizeTemplateType } from "@/lib/template-types"
 
 export type ImportRow = Record<string, string>;
 
+const dateBannerFields = ["DateGenerated", "BirthDate", "SentDate"] as const;
+
 export async function readAdmissionsWorksheet(buffer: Buffer) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as unknown as ExcelJS.Buffer);
@@ -63,6 +65,11 @@ export function validateBannerRow(row: ImportRow) {
   if (row.Email?.trim() && !isEmailAddress(row.Email)) {
     errors.push("Email must be a valid email address");
   }
+  for (const field of dateBannerFields) {
+    if (row[field]?.trim() && !isIsoDate(row[field])) {
+      errors.push(`${field} must be a valid date in YYYY-MM-DD format`);
+    }
+  }
   if (row.TemplateType?.trim() && !isTemplateTypeCode(row.TemplateType)) {
     errors.push("TemplateType must contain only letters, numbers, underscores, or hyphens, and be 80 characters or fewer");
   }
@@ -71,6 +78,17 @@ export function validateBannerRow(row: ImportRow) {
 
 function isEmailAddress(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function isIsoDate(value: string) {
+  const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return (
+    date.getUTCFullYear() === Number(match[1]) &&
+    date.getUTCMonth() === Number(match[2]) - 1 &&
+    date.getUTCDate() === Number(match[3])
+  );
 }
 
 export function rowToApplicantColumns(row: ImportRow, importId: string) {

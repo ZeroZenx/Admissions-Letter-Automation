@@ -100,6 +100,28 @@ test("validateBannerRow reports malformed email addresses before automation", ()
   assert.deepEqual(errors, ["Email must be a valid email address"]);
 });
 
+test("validateBannerRow reports malformed operational dates before import", () => {
+  const errors = validateBannerRow({
+    StudentID: "A001",
+    FirstName: "Maya",
+    LastName: "Singh",
+    Email: "maya@example.edu",
+    Program: "Nursing",
+    Campus: "City",
+    AdmissionStatus: "Admitted",
+    DateGenerated: "06/29/2026",
+    BirthDate: "2026-02-30",
+    SentDate: "yesterday",
+    TemplateType: "UOFFER"
+  });
+
+  assert.deepEqual(errors, [
+    "DateGenerated must be a valid date in YYYY-MM-DD format",
+    "BirthDate must be a valid date in YYYY-MM-DD format",
+    "SentDate must be a valid date in YYYY-MM-DD format"
+  ]);
+});
+
 test("readAdmissionsWorksheet normalizes and validates Banner TemplateType codes", async () => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Admissions");
