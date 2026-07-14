@@ -147,7 +147,7 @@ export async function POST(request: Request) {
       [letter.applicant_id, body.generatedLetterId, letter.email, body.subject, sanitizedBody, body.resendReason ?? null, dbUser.id]
     );
 
-    await query("UPDATE applicants SET email_status = 'Queued' WHERE id = $1", [letter.applicant_id]);
+    await query("UPDATE applicants SET email_status = 'Queued', sent_date = null, error_message = null WHERE id = $1", [letter.applicant_id]);
     try {
       await audit("email.queued", "email_logs", {
         studentId: letter.student_id,
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
     }
 
     try {
-      await query("UPDATE applicants SET email_status = 'Sending' WHERE id = $1", [letter.applicant_id]);
+      await query("UPDATE applicants SET email_status = 'Sending', sent_date = null, error_message = null WHERE id = $1", [letter.applicant_id]);
       if (authEnv.AUTH_MODE !== "development") {
         if (!graphAccessToken) throw new HttpError(401, "Microsoft Graph email sending requires a delegated Graph bearer token.");
         await sendGraphMail({

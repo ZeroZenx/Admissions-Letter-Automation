@@ -454,12 +454,12 @@ test("email send route does not mark delivered mail failed when sent audit loggi
   assert.match(source, /if \(authEnv\.AUTH_MODE !== "development"\)/);
   assert.match(source, /import \{ letterDownloadFileName \} from "@\/lib\/download-filenames"/);
   assert.match(source, /a\.student_id, a\.template_type, a\.email/);
-  assert.match(source, /UPDATE applicants SET email_status = 'Queued' WHERE id = \$1/);
+  assert.match(source, /UPDATE applicants SET email_status = 'Queued', sent_date = null, error_message = null WHERE id = \$1/);
   assert.match(source, /email\.queued/);
   assert.match(source, /Email queue audit failed\./);
   assert.match(source, /UPDATE email_logs SET status = 'failed', error_message = \$1 WHERE id = \$2/);
   assert.match(source, /UPDATE applicants SET email_status = 'Failed', error_message = \$1 WHERE id = \$2/);
-  assert.match(source, /UPDATE applicants SET email_status = 'Sending' WHERE id = \$1/);
+  assert.match(source, /UPDATE applicants SET email_status = 'Sending', sent_date = null, error_message = null WHERE id = \$1/);
   assert.match(source, /await sendGraphMail\(/);
   assert.match(source, /attachmentName: letterDownloadFileName\(letter\.student_id, letter\.template_type, "pdf"\)/);
   assert.match(source, /UPDATE email_logs SET status = 'sent', sent_at = now\(\) WHERE id = \$1/);
@@ -490,4 +490,19 @@ test("email queue surfaces sent-with-warning responses", async () => {
 
   assert.match(source, /warning\?: string/);
   assert.match(source, /result\.warning \?\? "Email sent and logged\."/);
+});
+
+test("email send route clears stale applicant status details while queued or sending", async () => {
+  const source = await readFile("app/api/send-email/route.ts", "utf8");
+
+  assert.match(source, /UPDATE applicants SET email_status = 'Queued', sent_date = null, error_message = null WHERE id = \$1/);
+  assert.match(source, /UPDATE applicants SET email_status = 'Sending', sent_date = null, error_message = null WHERE id = \$1/);
+
+  const queuedIndex = source.indexOf("UPDATE applicants SET email_status = 'Queued', sent_date = null, error_message = null");
+  const sendingIndex = source.indexOf("UPDATE applicants SET email_status = 'Sending', sent_date = null, error_message = null");
+  const sentIndex = source.indexOf("UPDATE applicants SET email_status = 'Sent', sent_date = now(), error_message = null");
+
+  assert.ok(queuedIndex > -1);
+  assert.ok(sendingIndex > queuedIndex);
+  assert.ok(sentIndex > sendingIndex);
 });
