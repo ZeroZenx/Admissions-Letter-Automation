@@ -22,7 +22,7 @@ test("template list only exposes mappings to template managers", async () => {
   assert.match(source, /const canManageMappings = user\.roles\.some/);
   assert.match(source, /\["Admin", "Admissions Supervisor"\]\.includes\(role\)/);
   assert.match(source, /canManageMappings\s+\?/);
-  assert.match(source, /json_build_object\('placeholder', fm\.placeholder, 'bannerField', fm\.banner_field, 'fallbackValue', fm\.fallback_value\)/);
+  assert.match(source, /json_build_object\('placeholder', fm\.placeholder, 'bannerField', fm\.banner_field, 'fallbackValue', fm\.fallback_value\) ORDER BY fm\.placeholder/);
   assert.match(source, /'\[\]'::json AS mappings/);
   assert.match(checklist, /Template mapping fallback values are only exposed to Admin and Admissions Supervisor roles/);
 });

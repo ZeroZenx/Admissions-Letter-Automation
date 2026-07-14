@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     const result = canManageMappings
       ? await query(
           `SELECT t.id, t.name, t.template_type, t.original_file_name, t.placeholders, t.is_active, t.uploaded_at,
-                  COALESCE(json_agg(json_build_object('placeholder', fm.placeholder, 'bannerField', fm.banner_field, 'fallbackValue', fm.fallback_value))
+                  COALESCE(json_agg(json_build_object('placeholder', fm.placeholder, 'bannerField', fm.banner_field, 'fallbackValue', fm.fallback_value) ORDER BY fm.placeholder)
                     FILTER (WHERE fm.id IS NOT NULL), '[]') AS mappings
              FROM templates t
              LEFT JOIN field_mappings fm ON fm.template_id = t.id
