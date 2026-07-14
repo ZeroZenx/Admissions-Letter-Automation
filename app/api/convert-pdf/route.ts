@@ -57,7 +57,10 @@ export async function POST(request: Request) {
       pdfStorageKey,
       body.generatedLetterId
     ]);
-    await query("UPDATE applicants SET pdf_file_name = $1, error_message = null WHERE id = $2", [pdfFileName, letter.applicant_id]);
+    await query("UPDATE applicants SET pdf_file_name = $1, error_message = null, processed_by_flow = true WHERE id = $2", [
+      pdfFileName,
+      letter.applicant_id
+    ]);
     await audit("letter.converted_pdf", "generated_letters", {
       studentId: letter.student_id,
       templateType: letter.template_type,

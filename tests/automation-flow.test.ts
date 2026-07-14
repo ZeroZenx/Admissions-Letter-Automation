@@ -148,7 +148,7 @@ test("PDF conversion updates applicant operational PDF filename", async () => {
   assert.match(source, /a\.template_type/);
   assert.match(source, /import \{ letterDownloadFileName \} from "@\/lib\/download-filenames"/);
   assert.match(source, /const pdfFileName = letterDownloadFileName\(letter\.student_id, letter\.template_type, "pdf"\)/);
-  assert.match(source, /UPDATE applicants SET pdf_file_name = \$1, error_message = null WHERE id = \$2/);
+  assert.match(source, /UPDATE applicants SET pdf_file_name = \$1, error_message = null, processed_by_flow = true WHERE id = \$2/);
   assert.match(source, /pdfFileName/);
   assert.match(converterSource, /storageKeyFromPath\(pdfPath\)/);
 });
