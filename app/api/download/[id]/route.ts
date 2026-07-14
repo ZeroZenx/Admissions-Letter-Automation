@@ -15,7 +15,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const dbUser = await ensureDbUser(user);
     const { id } = await params;
     const url = new URL(request.url);
-    const type = url.searchParams.get("type") === "docx" ? "docx" : "pdf";
+    const requestedType = url.searchParams.get("type") ?? "pdf";
+    if (requestedType !== "pdf" && requestedType !== "docx") {
+      return NextResponse.json({ error: "Download type must be pdf or docx." }, { status: 400 });
+    }
+    const type = requestedType;
     const disposition = url.searchParams.get("disposition") === "inline" ? "inline" : "attachment";
     const column = type === "docx" ? "docx_storage_key" : "pdf_storage_key";
     const result = await query<Record<string, string>>(

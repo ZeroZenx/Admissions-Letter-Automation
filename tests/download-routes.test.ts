@@ -31,6 +31,9 @@ test("individual download route audits downloads without returning storage paths
   assert.match(source, /readStorageBuffer\(key\)/);
   assert.match(source, /storageFileExists\(key\)/);
   assert.match(source, /File not found/);
+  assert.match(source, /const requestedType = url\.searchParams\.get\("type"\) \?\? "pdf"/);
+  assert.match(source, /requestedType !== "pdf" && requestedType !== "docx"/);
+  assert.match(source, /Download type must be pdf or docx\./);
   assert.match(source, /letter\.downloaded/);
   assert.match(source, /fileType: type/);
   assert.match(source, /disposition = url\.searchParams\.get\("disposition"\) === "inline" \? "inline" : "attachment"/);
