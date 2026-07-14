@@ -3,6 +3,7 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { HttpError, requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { letterDownloadFileName } from "@/lib/download-filenames";
 import { getAuthEnv } from "@/lib/env";
 import { sendGraphMail } from "@/lib/graph-mail";
 import { handleApiError } from "@/lib/http";
@@ -36,12 +37,13 @@ export async function POST(request: Request) {
       applicant_id: string;
       pdf_storage_key: string | null;
       student_id: string;
+      template_type: string;
       email: string;
       first_name: string;
       last_name: string;
       counselor_user_id: string | null;
     }>(
-      `SELECT gl.applicant_id, gl.pdf_storage_key, a.student_id, a.email, a.first_name, a.last_name, a.counselor_user_id
+      `SELECT gl.applicant_id, gl.pdf_storage_key, a.student_id, a.template_type, a.email, a.first_name, a.last_name, a.counselor_user_id
          FROM generated_letters gl
          JOIN applicants a ON a.id = gl.applicant_id
         WHERE gl.id = $1`,
@@ -148,7 +150,7 @@ export async function POST(request: Request) {
           recipient: letter.email,
           subject: body.subject,
           body: sanitizedBody,
-          attachmentName: `${letter.student_id}-admissions-letter.pdf`,
+          attachmentName: letterDownloadFileName(letter.student_id, letter.template_type, "pdf"),
           attachmentContent: pdf
         });
       }
