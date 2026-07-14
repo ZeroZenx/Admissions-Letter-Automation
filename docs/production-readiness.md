@@ -47,7 +47,7 @@ Use this checklist before enabling COSTAATT staff access.
 - DOCX template uploads are limited to 15 MB.
 - PDF email attachments are limited to 10 MB.
 - Bulk generation requests are limited to 2,000 applicant IDs.
-- ZIP download requests are limited to 200 generated-letter IDs.
+- ZIP download requests are limited to 200 unique generated-letter IDs.
 - Applicant status exports are limited to 10,000 rows.
 - Dashboard list APIs enforce bounded `limit` and `offset` pagination.
 - Email HTML is sanitized before sending and logging.

@@ -22,6 +22,9 @@ export async function POST(request: Request) {
     const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
     const dbUser = await ensureDbUser(user);
     const body = schema.parse(await request.json());
+    if (hasDuplicateGeneratedLetterIds(body.generatedLetterIds)) {
+      return NextResponse.json({ error: "ZIP download generatedLetterIds must be unique." }, { status: 400 });
+    }
     const result = await query<{
       id: string;
       pdf_storage_key: string | null;
@@ -78,4 +81,8 @@ export async function POST(request: Request) {
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+function hasDuplicateGeneratedLetterIds(generatedLetterIds: string[]) {
+  return new Set(generatedLetterIds).size !== generatedLetterIds.length;
 }
