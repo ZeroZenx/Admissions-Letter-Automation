@@ -11,6 +11,8 @@ test("field mapping updates validate Banner fields and audit the acting user", a
   assert.match(source, /const dbUser = await ensureDbUser\(user\)/);
   assert.match(source, /SELECT placeholders FROM templates WHERE id = \$1/);
   assert.match(source, /Template not found\./);
+  assert.match(source, /duplicateMappingPlaceholders\(body\.mappings\)/);
+  assert.match(source, /Mappings include duplicate placeholders/);
   assert.match(source, /templatePlaceholderNames\(template\.placeholders\)/);
   assert.match(source, /Mappings include placeholders not detected in the template/);
   assert.match(source, /field_mappings\.updated/);
@@ -32,6 +34,21 @@ test("field mapping updates only accept placeholders detected on the template", 
 
   assert.ok(validationIndex > -1);
   assert.ok(transactionIndex > validationIndex);
+});
+
+test("field mapping updates reject duplicate placeholder mappings before saving", async () => {
+  const source = await readFile("app/api/field-mappings/route.ts", "utf8");
+
+  assert.match(source, /function duplicateMappingPlaceholders\(mappings: Array<\{ placeholder: string \}>\)/);
+  assert.match(source, /const seen = new Set<string>\(\)/);
+  assert.match(source, /const duplicates = new Set<string>\(\)/);
+  assert.match(source, /duplicates\.add\(mapping\.placeholder\)/);
+  assert.match(source, /throw new HttpError\(400, `Mappings include duplicate placeholders:/);
+
+  const duplicateIndex = source.indexOf("Mappings include duplicate placeholders");
+  const transactionIndex = source.indexOf("await withTransaction");
+  assert.ok(duplicateIndex > -1);
+  assert.ok(transactionIndex > duplicateIndex);
 });
 
 test("mapping UI prefills saved mappings and fallback values", async () => {

@@ -28,6 +28,10 @@ export async function POST(request: Request) {
     const templateResult = await query<{ placeholders: unknown }>("SELECT placeholders FROM templates WHERE id = $1", [body.templateId]);
     const template = templateResult.rows[0];
     if (!template) throw new HttpError(404, "Template not found.");
+    const duplicatePlaceholders = duplicateMappingPlaceholders(body.mappings);
+    if (duplicatePlaceholders.length) {
+      throw new HttpError(400, `Mappings include duplicate placeholders: ${duplicatePlaceholders.join(", ")}.`);
+    }
 
     const allowedPlaceholders = templatePlaceholderNames(template.placeholders);
     const unknownPlaceholders = body.mappings
@@ -68,4 +72,14 @@ function templatePlaceholderNames(placeholders: unknown) {
           .filter((name): name is string => typeof name === "string" && name.length > 0)
       : []
   );
+}
+
+function duplicateMappingPlaceholders(mappings: Array<{ placeholder: string }>) {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const mapping of mappings) {
+    if (seen.has(mapping.placeholder)) duplicates.add(mapping.placeholder);
+    seen.add(mapping.placeholder);
+  }
+  return [...duplicates];
 }
