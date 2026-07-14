@@ -40,6 +40,11 @@ export async function POST(request: Request) {
     if (unknownPlaceholders.length) {
       throw new HttpError(400, `Mappings include placeholders not detected in the template: ${unknownPlaceholders.join(", ")}.`);
     }
+    const mappedPlaceholders = new Set(body.mappings.map((mapping) => mapping.placeholder));
+    const missingPlaceholders = [...allowedPlaceholders].filter((placeholder) => !mappedPlaceholders.has(placeholder));
+    if (missingPlaceholders.length) {
+      throw new HttpError(400, `Mappings are missing detected placeholders: ${missingPlaceholders.join(", ")}.`);
+    }
 
     await withTransaction(async (client) => {
       await client.query("DELETE FROM field_mappings WHERE template_id = $1", [body.templateId]);

@@ -15,6 +15,7 @@ test("field mapping updates validate Banner fields and audit the acting user", a
   assert.match(source, /Mappings include duplicate placeholders/);
   assert.match(source, /templatePlaceholderNames\(template\.placeholders\)/);
   assert.match(source, /Mappings include placeholders not detected in the template/);
+  assert.match(source, /Mappings are missing detected placeholders/);
   assert.match(source, /field_mappings\.updated/);
   assert.match(source, /body\.templateId, dbUser\.id\)/);
 });
@@ -49,6 +50,20 @@ test("field mapping updates reject duplicate placeholder mappings before saving"
   const transactionIndex = source.indexOf("await withTransaction");
   assert.ok(duplicateIndex > -1);
   assert.ok(transactionIndex > duplicateIndex);
+});
+
+test("field mapping updates require every detected placeholder before saving", async () => {
+  const source = await readFile("app/api/field-mappings/route.ts", "utf8");
+
+  assert.match(source, /const mappedPlaceholders = new Set\(body\.mappings\.map\(\(mapping\) => mapping\.placeholder\)\)/);
+  assert.match(source, /missingPlaceholders = \[\.{3}allowedPlaceholders\]\.filter/);
+  assert.match(source, /!mappedPlaceholders\.has\(placeholder\)/);
+  assert.match(source, /throw new HttpError\(400, `Mappings are missing detected placeholders:/);
+
+  const missingIndex = source.indexOf("Mappings are missing detected placeholders");
+  const transactionIndex = source.indexOf("await withTransaction");
+  assert.ok(missingIndex > -1);
+  assert.ok(transactionIndex > missingIndex);
 });
 
 test("mapping UI prefills saved mappings and fallback values", async () => {
