@@ -404,7 +404,7 @@ test("email send route does not mark delivered mail failed when sent audit loggi
   assert.match(source, /await sendGraphMail\(/);
   assert.match(source, /attachmentName: letterDownloadFileName\(letter\.student_id, letter\.template_type, "pdf"\)/);
   assert.match(source, /UPDATE email_logs SET status = 'sent', sent_at = now\(\) WHERE id = \$1/);
-  assert.match(source, /UPDATE applicants SET email_status = 'Sent', sent_date = now\(\), error_message = null WHERE id = \$1/);
+  assert.match(source, /UPDATE applicants SET email_status = 'Sent', sent_date = now\(\), error_message = null, processed_by_flow = true WHERE id = \$1/);
   assert.match(source, /let auditLogged = true/);
   assert.match(source, /auditLogged = false/);
   assert.match(source, /Email was sent, but audit logging failed/);

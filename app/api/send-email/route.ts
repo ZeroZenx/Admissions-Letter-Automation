@@ -190,7 +190,10 @@ export async function POST(request: Request) {
     }
 
     await query("UPDATE email_logs SET status = 'sent', sent_at = now() WHERE id = $1", [emailLog.rows[0].id]);
-    await query("UPDATE applicants SET email_status = 'Sent', sent_date = now(), error_message = null WHERE id = $1", [letter.applicant_id]);
+    await query(
+      "UPDATE applicants SET email_status = 'Sent', sent_date = now(), error_message = null, processed_by_flow = true WHERE id = $1",
+      [letter.applicant_id]
+    );
 
     let auditLogged = true;
     await audit("email.sent", "email_logs", {
