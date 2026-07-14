@@ -207,6 +207,19 @@ test("letter generation records applicant and generated-letter failures", async 
   assert.doesNotMatch(source, /return NextResponse\.json\(\{ error: `No active template/);
 });
 
+test("letter generation queries only required applicant and template fields", async () => {
+  const source = await readFile("app/api/generate-letter/route.ts", "utf8");
+
+  assert.match(source, /const applicantSelect = `/);
+  assert.match(source, /SELECT id, counselor_user_id, student_id, term, first_name, middle_name, last_name,/);
+  assert.match(source, /processed_by_flow, template_type, raw_data, validation_errors/);
+  assert.match(source, /query<ApplicantGenerationRow>\(applicantSelect, \[body\.applicantId\]\)/);
+  assert.match(source, /query<TemplateGenerationRow>/);
+  assert.match(source, /SELECT id, template_type, storage_key, placeholders/);
+  assert.doesNotMatch(source, /SELECT \* FROM applicants/);
+  assert.doesNotMatch(source, /SELECT \* FROM templates/);
+});
+
 test("upload UI offers automatic document generation and displays operational columns", async () => {
   const source = await readFile("components/app-client.tsx", "utf8");
 

@@ -13,6 +13,34 @@ import { enforceApplicantOwnership, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
 
+const applicantSelect = `
+  SELECT id, counselor_user_id, student_id, term, first_name, middle_name, last_name,
+         address_code, address1, address2, address3, city, country, nation, campus,
+         college, degree, major, status, program, date_generated, birth_date,
+         id_passport, residency_code, residency_description, application_source,
+         spriden_user, email, email_code, phone1, phone2, admission_status,
+         email_status, sent_date, word_file_name, pdf_file_name, error_message,
+         processed_by_flow, template_type, raw_data, validation_errors
+    FROM applicants
+   WHERE id = $1`;
+
+type ApplicantGenerationRow = {
+  id: string;
+  counselor_user_id: string | null;
+  student_id: string;
+  template_type: string;
+  validation_errors: unknown;
+  raw_data: unknown;
+  [key: string]: unknown;
+};
+
+type TemplateGenerationRow = {
+  id: string;
+  template_type: string;
+  storage_key: string;
+  placeholders: unknown;
+};
+
 const schema = z.object({
   applicantId: z.string().uuid(),
   convertPdf: z.boolean().default(true)
@@ -30,7 +58,7 @@ export async function POST(request: Request) {
     dbUserId = dbUser.id;
     const body = schema.parse(await request.json());
     applicantId = body.applicantId;
-    const applicantResult = await query<Record<string, unknown>>("SELECT * FROM applicants WHERE id = $1", [body.applicantId]);
+    const applicantResult = await query<ApplicantGenerationRow>(applicantSelect, [body.applicantId]);
     const applicant = applicantResult.rows[0];
     if (!applicant) return NextResponse.json({ error: "Applicant not found." }, { status: 404 });
     failureStudentId = applicant.student_id;
@@ -40,8 +68,10 @@ export async function POST(request: Request) {
       throw new HttpError(400, `Applicant ${String(applicant.student_id ?? "")} has source-truth validation errors. Correct the Banner row before generating a letter.`);
     }
 
-    const templateResult = await query<Record<string, unknown>>(
-      "SELECT * FROM templates WHERE template_type = $1 AND is_active = true",
+    const templateResult = await query<TemplateGenerationRow>(
+      `SELECT id, template_type, storage_key, placeholders
+         FROM templates
+        WHERE template_type = $1 AND is_active = true`,
       [applicant.template_type]
     );
     const template = templateResult.rows[0];
