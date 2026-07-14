@@ -16,21 +16,16 @@ test("applicant status export returns Banner workbook with operational columns",
   const source = await readFile("app/api/applicants/export/route.ts", "utf8");
   const clientSource = await readFile("components/app-client.tsx", "utf8");
   const bannerFieldsSource = await readFile("lib/banner-fields.ts", "utf8");
+  const statusExportSource = await readFile("lib/status-export.ts", "utf8");
 
-  assert.match(source, /new ExcelJS\.Workbook\(\)/);
-  assert.match(source, /workbook\.addWorksheet\("Admissions"\)/);
-  assert.match(source, /statusExportFields\.map/);
-  assert.match(source, /statusExportToDbField/);
+  assert.match(statusExportSource, /new ExcelJS\.Workbook\(\)/);
+  assert.match(statusExportSource, /workbook\.addWorksheet\("Admissions"\)/);
+  assert.match(statusExportSource, /statusExportFields\.map/);
+  assert.match(statusExportSource, /statusExportToDbField/);
   assert.match(bannerFieldsSource, /"ProcessFlow",\n\s+"TemplateType"/);
   assert.match(bannerFieldsSource, /ProcessFlow: "template_type"/);
-  assert.match(source, /worksheet\.getRow\(1\)\.font = \{ bold: true \}/);
-  assert.match(source, /worksheet\.autoFilter = \{/);
-  assert.match(source, /to: `\$\{excelColumnLetter\(statusExportFields\.length\)\}1`/);
-  assert.match(source, /worksheet\.getColumn\(field\)\.numFmt = "yyyy-mm-dd"/);
-  assert.match(source, /const dateFields = new Set\(\["DateGenerated", "BirthDate", "SentDate"\]\)/);
-  assert.match(source, /exportValue\(field, row\[statusExportToDbField\[field\]\]\)/);
-  assert.match(source, /function exportDateValue\(value: unknown\)/);
-  assert.match(source, /new Date\(Date\.UTC\(Number\(match\[1\]\), Number\(match\[2\]\) - 1, Number\(match\[3\]\)\)\)/);
+  assert.match(source, /applicantStatusExportColumns\(\)/);
+  assert.match(source, /buildApplicantStatusWorkbook\(result\.rows\)/);
   assert.match(source, /Content-Type": "application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet"/);
   assert.match(source, /Content-Disposition": `attachment; filename="costaatt-admissions-status-export\.xlsx"`/);
   assert.match(source, /counselorApplicantWhereClause/);

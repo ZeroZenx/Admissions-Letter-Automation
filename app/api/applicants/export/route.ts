@@ -1,16 +1,13 @@
-import ExcelJS from "exceljs";
 import { applicantFilterClauses, readApplicantFilters } from "@/lib/applicant-filters";
 import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
-import { statusExportFields, statusExportToDbField } from "@/lib/banner-fields";
 import { query } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
 import { uploadLimits } from "@/lib/limits";
+import { applicantStatusExportColumns, buildApplicantStatusWorkbook } from "@/lib/status-export";
 import { counselorApplicantWhereClause, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
-
-const dateFields = new Set(["DateGenerated", "BirthDate", "SentDate"]);
 
 export async function GET(request: Request) {
   try {
@@ -44,7 +41,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const dbColumns = [...new Set(statusExportFields.map((field) => statusExportToDbField[field]))];
+    const dbColumns = applicantStatusExportColumns();
     const result = await query<Record<string, unknown>>(
       `SELECT ${dbColumns.join(", ")}
          FROM applicants
@@ -53,30 +50,12 @@ export async function GET(request: Request) {
       params
     );
 
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = "COSTAATT Admissions Letter Automation";
-    workbook.created = new Date();
-    const worksheet = workbook.addWorksheet("Admissions");
-    worksheet.columns = statusExportFields.map((field) => ({ header: field, key: field, width: Math.max(14, field.length + 2) }));
-    worksheet.getRow(1).font = { bold: true };
-    worksheet.autoFilter = {
-      from: "A1",
-      to: `${excelColumnLetter(statusExportFields.length)}1`
-    };
-    for (const field of dateFields) {
-      worksheet.getColumn(field).numFmt = "yyyy-mm-dd";
-    }
-
-    for (const row of result.rows) {
-      worksheet.addRow(Object.fromEntries(statusExportFields.map((field) => [field, exportValue(field, row[statusExportToDbField[field]])])));
-    }
-    worksheet.views = [{ state: "frozen", ySplit: 1 }];
-
     await audit("applicants.exported", "applicants", {
       exportedCount: result.rows.length,
       filters
     }, undefined, dbUser.id);
 
+    const workbook = await buildApplicantStatusWorkbook(result.rows);
     const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
     return new Response(buffer, {
       headers: {
@@ -87,30 +66,4 @@ export async function GET(request: Request) {
   } catch (error) {
     return handleApiError(error);
   }
-}
-
-function exportValue(field: string, value: unknown) {
-  if (value == null) return "";
-  if (dateFields.has(field)) return exportDateValue(value);
-  if (typeof value === "boolean") return value ? "true" : "false";
-  return String(value);
-}
-
-function exportDateValue(value: unknown) {
-  if (value instanceof Date) return value;
-  const text = String(value).trim();
-  const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) return text;
-  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
-}
-
-function excelColumnLetter(columnNumber: number) {
-  let column = columnNumber;
-  let letter = "";
-  while (column > 0) {
-    const remainder = (column - 1) % 26;
-    letter = String.fromCharCode(65 + remainder) + letter;
-    column = Math.floor((column - 1) / 26);
-  }
-  return letter;
 }
