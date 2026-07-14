@@ -38,6 +38,16 @@ test("template uploads normalize and validate Banner template types", async () =
   assert.match(source, /templateType,/);
 });
 
+test("template placeholder detection reports unreadable DOCX uploads as bad requests", async () => {
+  const placeholderSource = await readFile("lib/docx-placeholders.ts", "utf8");
+  const uploadRouteSource = await readFile("app/api/templates/route.ts", "utf8");
+  const detectRouteSource = await readFile("app/api/templates/detect-placeholders/route.ts", "utf8");
+
+  assert.match(placeholderSource, /throw new HttpError\(400, "The DOCX template could not be read\. Upload a valid \.docx Word template\."\)/);
+  assert.match(uploadRouteSource, /const placeholders = detectDocxPlaceholders\(buffer\)/);
+  assert.match(detectRouteSource, /const placeholders = detectDocxPlaceholders\(Buffer\.from\(await file\.arrayBuffer\(\)\)\)/);
+});
+
 test("template uploads auto-map placeholders that match Banner fields", async () => {
   const source = await readFile("app/api/templates/route.ts", "utf8");
   const readme = await readFile("README.md", "utf8");

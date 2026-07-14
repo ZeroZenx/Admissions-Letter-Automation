@@ -1,4 +1,5 @@
 import PizZip from "pizzip";
+import { HttpError } from "@/lib/auth";
 
 export type DetectedPlaceholder = {
   name: string;
@@ -9,7 +10,12 @@ export type DetectedPlaceholder = {
 const xmlFilePattern = /^word\/(document|header\d+|footer\d+|footnotes|endnotes)\.xml$/;
 
 export function detectDocxPlaceholders(buffer: Buffer): DetectedPlaceholder[] {
-  const zip = new PizZip(buffer);
+  let zip: PizZip;
+  try {
+    zip = new PizZip(buffer);
+  } catch {
+    throw new HttpError(400, "The DOCX template could not be read. Upload a valid .docx Word template.");
+  }
   const counts = new Map<string, DetectedPlaceholder>();
 
   for (const fileName of Object.keys(zip.files)) {

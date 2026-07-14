@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import PizZip from "pizzip";
+import { HttpError } from "../lib/auth";
 import { detectDocxPlaceholders, normalizePlaceholder } from "../lib/docx-placeholders";
 
 test("normalizePlaceholder cleans merge-field syntax", () => {
@@ -29,5 +30,15 @@ test("detectDocxPlaceholders finds merge, token, and content-control placeholder
       ["FirstName", "text-token"],
       ["StudentID", "merge-field"]
     ]
+  );
+});
+
+test("detectDocxPlaceholders rejects unreadable DOCX templates as bad uploads", () => {
+  assert.throws(
+    () => detectDocxPlaceholders(Buffer.from("not a docx")),
+    (error) =>
+      error instanceof HttpError &&
+      error.status === 400 &&
+      error.message === "The DOCX template could not be read. Upload a valid .docx Word template."
   );
 });
