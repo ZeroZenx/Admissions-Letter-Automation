@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "db:migrate": "node scripts/migrate.mjs db/migrations/001_initial_schema.sql db/migrations/002_operational_integrity.sql db/migrations/003_app_settings.sql db/migrations/004_query_performance.sql db/migrations/005_field_mapping_integrity.sql db/migrations/006_operational_status_consistency.sql db/migrations/007_template_type_integrity.sql db/migrations/008_storage_key_integrity.sql db/migrations/009_applicant_duplicate_send_integrity.sql db/migrations/010_applicant_status_consistency.sql",
+    "db:migrate": "node scripts/migrate.mjs db/migrations/001_initial_schema.sql db/migrations/002_operational_integrity.sql db/migrations/003_app_settings.sql db/migrations/004_query_performance.sql db/migrations/005_field_mapping_integrity.sql db/migrations/006_operational_status_consistency.sql db/migrations/007_template_type_integrity.sql db/migrations/008_storage_key_integrity.sql db/migrations/009_applicant_duplicate_send_integrity.sql db/migrations/010_applicant_status_consistency.sql db/migrations/011_template_name_integrity.sql",
     "db:seed": "node scripts/migrate.mjs db/seeds/001_template_types.sql",
     "db:setup": "npm run db:migrate && npm run db:seed",
     "smoke": "node scripts/smoke.mjs"

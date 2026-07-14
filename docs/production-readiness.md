@@ -64,6 +64,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Settings changes are restricted to Admin and Admissions Supervisor roles and are audited.
 - Template activation changes are restricted to Admin and Admissions Supervisor roles and are audited.
 - Template mapping fallback values are only exposed to Admin and Admissions Supervisor roles.
+- Template names are limited to 160 characters and cannot contain control characters.
 
 ## Data And Document Validation
 

@@ -23,6 +23,7 @@ test("database setup script includes operational integrity migration", async () 
   assert.match(packageJson.scripts["db:migrate"], /008_storage_key_integrity\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /009_applicant_duplicate_send_integrity\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /010_applicant_status_consistency\.sql/);
+  assert.match(packageJson.scripts["db:migrate"], /011_template_name_integrity\.sql/);
 });
 
 test("query performance migration covers operational dashboard and automation queries", async () => {
@@ -105,4 +106,13 @@ test("applicant status consistency migration protects operational status fields"
   assert.match(sql, /status consistency violation/);
   assert.match(sql, /email_status <> 'Sent' OR sent_date IS NOT NULL/);
   assert.match(sql, /email_status <> 'Failed' OR NULLIF\(trim\(error_message\), ''\) IS NOT NULL/);
+});
+
+test("template name integrity migration bounds display names", async () => {
+  const sql = await readFile("db/migrations/011_template_name_integrity.sql", "utf8");
+
+  assert.match(sql, /templates_name_safe_chk/);
+  assert.match(sql, /\^\[\^\[:cntrl:\]\]\{1,160\}\$/);
+  assert.match(sql, /invalid name value/);
+  assert.match(sql, /Names must be 160 characters or fewer/);
 });

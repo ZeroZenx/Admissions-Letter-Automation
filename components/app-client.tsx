@@ -931,7 +931,7 @@ function TemplatesPage({
         <form action={onUpload}>
           <div className="field">
             <label>Template name</label>
-            <input name="name" required placeholder="Unconditional Offer" />
+            <input name="name" required maxLength={160} placeholder="Unconditional Offer" />
           </div>
           <div className="field">
             <label>TemplateType value</label>

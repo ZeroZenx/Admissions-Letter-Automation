@@ -8,6 +8,7 @@ import { detectDocxPlaceholders, normalizePlaceholder } from "@/lib/docx-placeho
 import { handleApiError } from "@/lib/http";
 import { uploadLimits, validateFileSize } from "@/lib/request-limits";
 import { saveBuffer } from "@/lib/storage";
+import { parseTemplateName } from "@/lib/template-names";
 import { parseTemplateType } from "@/lib/template-types";
 import { ensureDbUser } from "@/lib/user-context";
 
@@ -51,12 +52,13 @@ export async function POST(request: Request) {
     const dbUser = await ensureDbUser(user);
     const formData = await request.formData();
     const file = formData.get("file");
-    const name = String(formData.get("name") || "").trim();
+    const nameInput = String(formData.get("name") || "");
     const templateTypeInput = String(formData.get("templateType") || "");
 
-    if (!(file instanceof File) || !name || !templateTypeInput.trim()) {
+    if (!(file instanceof File) || !nameInput.trim() || !templateTypeInput.trim()) {
       return NextResponse.json({ error: "file, name, and templateType are required." }, { status: 400 });
     }
+    const name = parseTemplateName(nameInput);
     const templateType = parseTemplateType(templateTypeInput);
     if (!file.name.toLowerCase().endsWith(".docx")) {
       return NextResponse.json({ error: "Only DOCX template uploads are allowed." }, { status: 400 });

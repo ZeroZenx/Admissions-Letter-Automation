@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { parseTemplateName } from "../lib/template-names";
 import { parseTemplateType } from "../lib/template-types";
 
 test("template route supports audited activation lifecycle updates", async () => {
@@ -32,10 +33,24 @@ test("template uploads normalize and validate Banner template types", async () =
   assert.equal(parseTemplateType(" uoffer "), "UOFFER");
   assert.equal(parseTemplateType("condoffer_csec_pt"), "CONDOFFER_CSEC_PT");
   assert.throws(() => parseTemplateType("bad template!"), /templateType must contain only/);
-  assert.match(source, /const name = String\(formData\.get\("name"\) \|\| ""\)\.trim\(\)/);
+  assert.match(source, /const nameInput = String\(formData\.get\("name"\) \|\| ""\)/);
   assert.match(source, /const templateTypeInput = String\(formData\.get\("templateType"\) \|\| ""\)/);
+  assert.match(source, /const name = parseTemplateName\(nameInput\)/);
   assert.match(source, /const templateType = parseTemplateType\(templateTypeInput\)/);
   assert.match(source, /templateType,/);
+});
+
+test("template uploads bound display names before saving", async () => {
+  const source = await readFile("app/api/templates/route.ts", "utf8");
+  const clientSource = await readFile("components/app-client.tsx", "utf8");
+
+  assert.equal(parseTemplateName(" Unconditional Offer "), "Unconditional Offer");
+  assert.throws(() => parseTemplateName(""), /Template name must be 160 characters/);
+  assert.throws(() => parseTemplateName(`${"A".repeat(161)}`), /Template name must be 160 characters/);
+  assert.throws(() => parseTemplateName("Offer\nName"), /cannot contain control characters/);
+  assert.match(source, /import \{ parseTemplateName \} from "@\/lib\/template-names"/);
+  assert.match(source, /parseTemplateName\(nameInput\)/);
+  assert.match(clientSource, /<input name="name" required maxLength=\{160\} placeholder="Unconditional Offer" \/>/);
 });
 
 test("template placeholder detection reports unreadable DOCX uploads as bad requests", async () => {
