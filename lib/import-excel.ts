@@ -6,6 +6,7 @@ import { isTemplateTypeCode, normalizeTemplateType } from "@/lib/template-types"
 export type ImportRow = Record<string, string>;
 
 const dateBannerFields = ["DateGenerated", "BirthDate", "SentDate"] as const;
+const emailStatuses = ["Not Sent", "Queued", "Sending", "Sent", "Failed"] as const;
 
 export async function readAdmissionsWorksheet(buffer: Buffer) {
   const workbook = new ExcelJS.Workbook();
@@ -65,6 +66,15 @@ export function validateBannerRow(row: ImportRow) {
   if (row.Email?.trim() && !isEmailAddress(row.Email)) {
     errors.push("Email must be a valid email address");
   }
+  if (row.EmailStatus?.trim() && !isEmailStatus(row.EmailStatus)) {
+    errors.push("EmailStatus must be one of Not Sent, Queued, Sending, Sent, or Failed");
+  }
+  if (row.EmailStatus === "Sent" && !row.SentDate?.trim()) {
+    errors.push("SentDate is required when EmailStatus is Sent");
+  }
+  if (row.EmailStatus === "Failed" && !row.ErrorMessage?.trim()) {
+    errors.push("ErrorMessage is required when EmailStatus is Failed");
+  }
   for (const field of dateBannerFields) {
     if (row[field]?.trim() && !isIsoDate(row[field])) {
       errors.push(`${field} must be a valid date in YYYY-MM-DD format`);
@@ -78,6 +88,10 @@ export function validateBannerRow(row: ImportRow) {
 
 function isEmailAddress(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+}
+
+function isEmailStatus(value: string) {
+  return emailStatuses.includes(value.trim() as (typeof emailStatuses)[number]);
 }
 
 function isIsoDate(value: string) {

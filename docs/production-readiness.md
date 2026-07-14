@@ -76,6 +76,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Confirm duplicate `StudentID` plus `TemplateType` rows in a Banner export are flagged as row-level errors and are not silently imported.
 - Confirm malformed `Email` values in a Banner export are flagged as row-level errors before automation starts.
 - Confirm malformed `DateGenerated`, `BirthDate`, or `SentDate` values are flagged as row-level errors before import insertion.
+- Confirm imported `EmailStatus` values are limited to supported statuses, `Sent` rows include `SentDate`, and `Failed` rows include `ErrorMessage`.
 - Confirm the dashboard Import Review panel shows uploaded file, worksheet, status, valid/invalid row counts, uploader, and row-level errors.
 - Confirm imported applicant records show `EmailStatus`, `SentDate`, `WordFileName`, `PDFFileName`, `ErrorMessage`, `ProcessedByFlow`, and `TemplateType`.
 - Confirm one-click upload runs full automation for valid rows: import, DOCX/PDF generation, Microsoft Graph email send, and applicant status updates.

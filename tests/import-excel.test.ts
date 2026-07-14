@@ -122,6 +122,53 @@ test("validateBannerRow reports malformed operational dates before import", () =
   ]);
 });
 
+test("validateBannerRow reports inconsistent email status fields before import", () => {
+  assert.deepEqual(
+    validateBannerRow({
+      StudentID: "A001",
+      FirstName: "Maya",
+      LastName: "Singh",
+      Email: "maya@example.edu",
+      Program: "Nursing",
+      Campus: "City",
+      AdmissionStatus: "Admitted",
+      EmailStatus: "Delivered",
+      TemplateType: "UOFFER"
+    }),
+    ["EmailStatus must be one of Not Sent, Queued, Sending, Sent, or Failed"]
+  );
+
+  assert.deepEqual(
+    validateBannerRow({
+      StudentID: "A002",
+      FirstName: "Dev",
+      LastName: "Ram",
+      Email: "dev@example.edu",
+      Program: "Business",
+      Campus: "City",
+      AdmissionStatus: "Admitted",
+      EmailStatus: "Sent",
+      TemplateType: "UOFFER"
+    }),
+    ["SentDate is required when EmailStatus is Sent"]
+  );
+
+  assert.deepEqual(
+    validateBannerRow({
+      StudentID: "A003",
+      FirstName: "Ana",
+      LastName: "Pierre",
+      Email: "ana@example.edu",
+      Program: "Science",
+      Campus: "City",
+      AdmissionStatus: "Admitted",
+      EmailStatus: "Failed",
+      TemplateType: "UOFFER"
+    }),
+    ["ErrorMessage is required when EmailStatus is Failed"]
+  );
+});
+
 test("readAdmissionsWorksheet normalizes and validates Banner TemplateType codes", async () => {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Admissions");

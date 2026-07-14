@@ -22,6 +22,7 @@ test("database setup script includes operational integrity migration", async () 
   assert.match(packageJson.scripts["db:migrate"], /007_template_type_integrity\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /008_storage_key_integrity\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /009_applicant_duplicate_send_integrity\.sql/);
+  assert.match(packageJson.scripts["db:migrate"], /010_applicant_status_consistency\.sql/);
 });
 
 test("query performance migration covers operational dashboard and automation queries", async () => {
@@ -93,4 +94,15 @@ test("applicant duplicate send migration blocks regenerated-letter duplicates", 
   assert.match(sql, /GROUP BY applicant_id/);
   assert.match(sql, /duplicate original pending\/sent emails/);
   assert.match(sql, /DROP INDEX IF EXISTS email_logs_one_original_send_idx/);
+});
+
+test("applicant status consistency migration protects operational status fields", async () => {
+  const sql = await readFile("db/migrations/010_applicant_status_consistency.sql", "utf8");
+
+  assert.match(sql, /applicants_email_status_consistency_chk/);
+  assert.match(sql, /email_status = 'Sent' AND sent_date IS NULL/);
+  assert.match(sql, /email_status = 'Failed' AND NULLIF\(trim\(error_message\), ''\) IS NULL/);
+  assert.match(sql, /status consistency violation/);
+  assert.match(sql, /email_status <> 'Sent' OR sent_date IS NOT NULL/);
+  assert.match(sql, /email_status <> 'Failed' OR NULLIF\(trim\(error_message\), ''\) IS NOT NULL/);
 });
