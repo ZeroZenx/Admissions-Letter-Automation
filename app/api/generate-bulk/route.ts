@@ -16,6 +16,7 @@ const schema = z.object({
   subject: z.string().trim().min(1).max(160).optional(),
   body: z.string().trim().min(1).max(12000).optional()
 });
+const BULK_ERROR_MESSAGE_LIMIT = 1000;
 
 export async function POST(request: Request) {
   try {
@@ -139,7 +140,9 @@ export async function POST(request: Request) {
 }
 
 function readError(value: unknown) {
-  if (value && typeof value === "object" && "error" in value && typeof value.error === "string") return value.error;
+  if (value && typeof value === "object" && "error" in value && typeof value.error === "string") {
+    return boundedErrorMessage(value.error);
+  }
   return "Batch automation failed.";
 }
 
@@ -151,15 +154,28 @@ function readGeneratedLetterId(value: unknown) {
 }
 
 function clientErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Batch automation failed.";
+  return boundedErrorMessage(error instanceof Error ? error.message : "Batch automation failed.");
 }
 
 async function readResponseJson(response: Response) {
   try {
-    return await response.json();
+    return normalizeInternalResponse(await response.json());
   } catch {
-    return { error: `${response.status} ${response.statusText || "Non-JSON response"}` };
+    return { error: boundedErrorMessage(`${response.status} ${response.statusText || "Non-JSON response"}`) };
   }
+}
+
+function normalizeInternalResponse(value: unknown) {
+  if (value && typeof value === "object" && "error" in value && typeof value.error === "string") {
+    return { ...value, error: boundedErrorMessage(value.error) };
+  }
+  return value;
+}
+
+function boundedErrorMessage(message: string) {
+  const trimmed = message.trim() || "Batch automation failed.";
+  if (trimmed.length <= BULK_ERROR_MESSAGE_LIMIT) return trimmed;
+  return `${trimmed.slice(0, BULK_ERROR_MESSAGE_LIMIT - 3)}...`;
 }
 
 async function buildBulkAutomationPreflight(applicantIds: string[], user: Awaited<ReturnType<typeof requireAuth>>, dbUserId: string) {

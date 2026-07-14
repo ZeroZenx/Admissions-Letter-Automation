@@ -356,8 +356,8 @@ test("bulk generation keeps row-level failures when internal APIs return non-jso
   const source = await readFile("app/api/generate-bulk/route.ts", "utf8");
 
   assert.match(source, /async function readResponseJson\(response: Response\)/);
-  assert.match(source, /try \{\n\s+return await response\.json\(\);/);
-  assert.match(source, /catch \{\n\s+return \{ error: `\$\{response\.status\} \$\{response\.statusText \|\| "Non-JSON response"\}` \};/);
+  assert.match(source, /try \{\n\s+return normalizeInternalResponse\(await response\.json\(\)\);/);
+  assert.match(source, /catch \{\n\s+return \{ error: boundedErrorMessage\(`\$\{response\.status\} \$\{response\.statusText \|\| "Non-JSON response"\}`\) \};/);
   assert.match(source, /const errorMessage = readError\(failure\)/);
 });
 
@@ -371,6 +371,19 @@ test("bulk generation keeps row-level failures when internal API calls throw", a
   assert.match(source, /ok: generated && \(!emailResult \|\| emailResult\.ok\)/);
   assert.match(source, /generated,/);
   assert.match(source, /function clientErrorMessage\(error: unknown\)/);
+});
+
+test("bulk generation bounds internal error messages before storing row failures", async () => {
+  const source = await readFile("app/api/generate-bulk/route.ts", "utf8");
+
+  assert.match(source, /const BULK_ERROR_MESSAGE_LIMIT = 1000/);
+  assert.match(source, /return boundedErrorMessage\(value\.error\)/);
+  assert.match(source, /return normalizeInternalResponse\(await response\.json\(\)\)/);
+  assert.match(source, /function normalizeInternalResponse\(value: unknown\)/);
+  assert.match(source, /\{ \.\.\.value, error: boundedErrorMessage\(value\.error\) \}/);
+  assert.match(source, /function boundedErrorMessage\(message: string\)/);
+  assert.match(source, /message\.trim\(\) \|\| "Batch automation failed\."/);
+  assert.match(source, /trimmed\.slice\(0, BULK_ERROR_MESSAGE_LIMIT - 3\)/);
 });
 
 test("email send route blocks pending duplicates before database conflicts", async () => {
