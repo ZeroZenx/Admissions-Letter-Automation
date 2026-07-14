@@ -82,7 +82,17 @@ export async function POST(request: Request) {
       if (!generated || (emailResult && !emailResult.ok)) {
         const failure = emailResult && !emailResult.ok ? emailResult.result : generationResult;
         const errorMessage = readError(failure);
-        await query("UPDATE applicants SET error_message = $1 WHERE id = $2", [errorMessage, applicantId]);
+        if (!generated) {
+          await query("UPDATE applicants SET error_message = $1, processed_by_flow = false WHERE id = $2", [
+            errorMessage,
+            applicantId
+          ]);
+        } else {
+          await query("UPDATE applicants SET email_status = 'Failed', error_message = $1 WHERE id = $2", [
+            errorMessage,
+            applicantId
+          ]);
+        }
       }
 
       results.push({

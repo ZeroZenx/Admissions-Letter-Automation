@@ -295,7 +295,8 @@ test("bulk generation can send generated PDFs and persist row-level failures", a
   assert.match(source, /\/api\/send-email/);
   assert.match(source, /generationResult = await readResponseJson\(response\)/);
   assert.match(source, /result: await readResponseJson\(emailResponse\)/);
-  assert.match(source, /UPDATE applicants SET error_message = \$1 WHERE id = \$2/);
+  assert.match(source, /UPDATE applicants SET error_message = \$1, processed_by_flow = false WHERE id = \$2/);
+  assert.match(source, /UPDATE applicants SET email_status = 'Failed', error_message = \$1 WHERE id = \$2/);
   assert.match(source, /batch\.generated/);
   assert.match(source, /requestedCount/);
   assert.match(source, /generatedCount/);
