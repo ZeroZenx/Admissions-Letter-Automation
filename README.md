@@ -91,11 +91,7 @@ For installation on a Windows VM, see [docs/windows-vm-deployment.md](docs/windo
 Run the full local gate before pushing changes:
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run build
-npm audit --omit=dev
+npm run validate
 ```
 
 GitHub Actions runs the same gate on pushes and pull requests.

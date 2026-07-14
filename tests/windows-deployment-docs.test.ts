@@ -10,7 +10,9 @@ test("Windows VM deployment guide documents native installation", async () => {
   assert.match(guide, /LibreOffice/);
   assert.match(guide, /SOFFICE_PATH=C:\/Program Files\/LibreOffice\/program\/soffice\.exe/);
   assert.match(guide, /APP_STORAGE_DIR=C:\/COSTAATT\/AdmissionsLetterStorage/);
-  assert.match(guide, /npm run start -- -H 127\.0\.0\.1 -p 6001/);
+  assert.match(guide, /npm run validate/);
+  assert.match(guide, /npm run start:6001/);
+  assert.match(guide, /Arguments: run start:6001/);
   assert.match(guide, /http:\/\/localhost:6001\/login/);
   assert.match(guide, /NEXT_PUBLIC_ENTRA_REDIRECT_URI` set to the origin/);
   assert.match(guide, /Windows service manager/);
@@ -22,6 +24,8 @@ test("Windows VM deployment guide is linked from operator docs", async () => {
 
   assert.match(readme, /docs\/windows-vm-deployment\.md/);
   assert.match(readme, /npm run dev -- -p 6001/);
+  assert.match(readme, /npm run validate/);
   assert.match(readme, /http:\/\/localhost:6001/);
   assert.match(checklist, /windows-vm-deployment\.md/);
+  assert.match(checklist, /npm run validate/);
 });

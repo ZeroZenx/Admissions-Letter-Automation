@@ -114,11 +114,7 @@ Use this checklist before enabling COSTAATT staff access.
 Run:
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run build
-npm audit --omit=dev
+npm run validate
 docker build --tag costaatt-admissions-letter-automation:ci .
 ```
 

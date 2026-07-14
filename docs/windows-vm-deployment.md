@@ -77,17 +77,13 @@ npm run db:setup
 7. Validate the app:
 
 ```powershell
-npm run lint
-npm run typecheck
-npm test
-npm run build
-npm audit --omit=dev
+npm run validate
 ```
 
 8. Start the app on port `6001`:
 
 ```powershell
-npm run start -- -H 127.0.0.1 -p 6001
+npm run start:6001
 ```
 
 Open:
@@ -112,7 +108,7 @@ Suggested service command:
 
 ```text
 Program: C:\Program Files\nodejs\npm.cmd
-Arguments: run start -- -H 127.0.0.1 -p 6001
+Arguments: run start:6001
 Startup directory: C:\path\to\Admissions-Letter-Automation
 ```
 

@@ -19,3 +19,14 @@ test("docker compose exposes an app healthcheck", async () => {
   assert.match(compose, /http:\/\/127\.0\.0\.1:3000\/api\/health/);
   assert.match(compose, /start_period: 30s/);
 });
+
+test("package scripts provide one-command validation and native port 6001 startup", async () => {
+  const packageJson = JSON.parse(await readFile("package.json", "utf8")) as { scripts: Record<string, string> };
+
+  assert.equal(packageJson.scripts["start:6001"], "next start -H 127.0.0.1 -p 6001");
+  assert.match(packageJson.scripts.validate, /npm run lint/);
+  assert.match(packageJson.scripts.validate, /npm run typecheck/);
+  assert.match(packageJson.scripts.validate, /npm test/);
+  assert.match(packageJson.scripts.validate, /npm run build/);
+  assert.match(packageJson.scripts.validate, /npm audit --omit=dev/);
+});
