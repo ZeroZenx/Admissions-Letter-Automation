@@ -64,7 +64,13 @@ export async function POST(request: Request) {
       mappingCount: body.mappings.length
     }, body.templateId, dbUser.id);
 
-    const result = await query("SELECT * FROM field_mappings WHERE template_id = $1 ORDER BY placeholder", [body.templateId]);
+    const result = await query(
+      `SELECT placeholder, banner_field, fallback_value
+         FROM field_mappings
+        WHERE template_id = $1
+        ORDER BY placeholder`,
+      [body.templateId]
+    );
     return NextResponse.json({ mappings: result.rows });
   } catch (error) {
     return handleApiError(error);

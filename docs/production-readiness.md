@@ -77,6 +77,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Confirm field mapping updates reject placeholder names that were not detected in the selected template.
 - Confirm field mapping updates reject duplicate placeholder mappings before saving.
 - Confirm field mapping updates reject incomplete mapping sets that omit detected placeholders.
+- Confirm field mapping save responses do not expose internal mapping IDs or timestamps.
 - Confirm re-uploading a template removes mappings for placeholders no longer present in the DOCX.
 - Confirm letter generation queries only the applicant and template fields needed for ownership, validation, merge values, and storage lookup.
 - Upload a current Banner export and confirm invalid rows are clearly shown.

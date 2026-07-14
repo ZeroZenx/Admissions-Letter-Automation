@@ -20,6 +20,8 @@ test("field mapping updates validate Banner fields and audit the acting user", a
   assert.match(source, /Mappings are missing detected placeholders/);
   assert.match(source, /field_mappings\.updated/);
   assert.match(source, /body\.templateId, dbUser\.id\)/);
+  assert.match(source, /SELECT placeholder, banner_field, fallback_value/);
+  assert.doesNotMatch(source, /SELECT \* FROM field_mappings/);
 });
 
 test("field mapping updates bound and normalize fallback values", async () => {
