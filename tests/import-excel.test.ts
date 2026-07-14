@@ -208,7 +208,8 @@ test("upload route and UI only accept XLSX workbooks", async () => {
   const readme = await readFile("README.md", "utf8");
   const windowsGuide = await readFile("docs/windows-vm-deployment.md", "utf8");
 
-  assert.match(routeSource, /\/\\\.xlsx\$\/i/);
+  assert.match(routeSource, /parseUploadFileName\(file\.name/);
+  assert.match(routeSource, /allowedExtensions: \["\.xlsx"\]/);
   assert.match(routeSource, /Only \.xlsx Excel workbook uploads are allowed\./);
   assert.match(clientSource, /accept="\.xlsx"/);
   assert.match(readme, /Banner `\.xlsx` Excel export/);

@@ -6,6 +6,7 @@ import { handleApiError } from "@/lib/http";
 import { readAdmissionsWorksheet, rowToApplicantColumns, validateBannerRow } from "@/lib/import-excel";
 import { uploadLimits, validateFileSize } from "@/lib/request-limits";
 import { saveBuffer } from "@/lib/storage";
+import { parseUploadFileName } from "@/lib/upload-file-names";
 import { ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
@@ -19,14 +20,16 @@ export async function POST(request: Request) {
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "Upload an Excel file using the file field." }, { status: 400 });
     }
-    if (!/\.xlsx$/i.test(file.name)) {
-      return NextResponse.json({ error: "Only .xlsx Excel workbook uploads are allowed." }, { status: 400 });
-    }
+    const fileName = parseUploadFileName(file.name, {
+      allowedExtensions: [".xlsx"],
+      label: "Banner export",
+      extensionError: "Only .xlsx Excel workbook uploads are allowed."
+    });
     const sizeError = validateFileSize(file, uploadLimits.excelBytes, "Banner export");
     if (sizeError) return sizeError;
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    await saveBuffer("imports", file.name, buffer);
+    await saveBuffer("imports", fileName, buffer);
     const workbook = await readAdmissionsWorksheet(buffer);
     const uploadedByCounselorId = user.roles.includes("Counselor") ? dbUser.id : undefined;
     const duplicateKeys = findDuplicateApplicantKeys(workbook.rows);
@@ -51,7 +54,7 @@ export async function POST(request: Request) {
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id`,
         [
-          file.name,
+          fileName,
           workbook.worksheetName,
           workbook.rows.length,
           workbook.rows.length - invalidRows.length,
@@ -80,7 +83,7 @@ export async function POST(request: Request) {
     await query("UPDATE imports SET imported_by = $1 WHERE id = $2", [dbUser.id, importRecord.id]);
 
     await audit("import.created", "imports", {
-      uploadedFileName: file.name,
+      uploadedFileName: fileName,
       worksheetName: workbook.worksheetName,
       totalRows: workbook.rows.length,
       invalidRows: invalidRows.length

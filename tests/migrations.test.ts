@@ -25,6 +25,7 @@ test("database setup script includes operational integrity migration", async () 
   assert.match(packageJson.scripts["db:migrate"], /010_applicant_status_consistency\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /011_template_name_integrity\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /012_field_mapping_fallback_integrity\.sql/);
+  assert.match(packageJson.scripts["db:migrate"], /013_upload_filename_integrity\.sql/);
 });
 
 test("query performance migration covers operational dashboard and automation queries", async () => {
@@ -125,4 +126,14 @@ test("field mapping fallback migration bounds generated-letter fallback text", a
   assert.match(sql, /char_length\(fallback_value\) > 2000/);
   assert.match(sql, /fallback_value IS NULL OR char_length\(fallback_value\) <= 2000/);
   assert.match(sql, /fallback_value value\(s\) longer than 2000 characters/);
+});
+
+test("upload filename migration bounds persisted upload names", async () => {
+  const sql = await readFile("db/migrations/013_upload_filename_integrity.sql", "utf8");
+
+  assert.match(sql, /imports_uploaded_file_name_safe_chk/);
+  assert.match(sql, /templates_original_file_name_safe_chk/);
+  assert.ok(sql.includes("uploaded_file_name !~ '^[^[:cntrl:]/\\\\]{1,255}$'"));
+  assert.ok(sql.includes("original_file_name !~ '^[^[:cntrl:]/\\\\]{1,255}$'"));
+  assert.match(sql, /cannot contain path separators or control characters/);
 });

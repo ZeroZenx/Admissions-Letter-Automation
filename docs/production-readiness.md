@@ -45,6 +45,7 @@ Use this checklist before enabling COSTAATT staff access.
 - The framework powered-by header is disabled.
 - Banner Excel uploads are limited to 10 MB.
 - DOCX template uploads are limited to 15 MB.
+- Uploaded Excel and DOCX filenames are limited to 255 characters and cannot contain path separators or control characters.
 - PDF email attachments are limited to 10 MB.
 - Bulk generation requests are limited to 2,000 applicant IDs.
 - ZIP download requests are limited to 200 unique generated-letter IDs.

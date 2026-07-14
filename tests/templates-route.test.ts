@@ -37,6 +37,8 @@ test("template uploads normalize and validate Banner template types", async () =
   assert.match(source, /const templateTypeInput = String\(formData\.get\("templateType"\) \|\| ""\)/);
   assert.match(source, /const name = parseTemplateName\(nameInput\)/);
   assert.match(source, /const templateType = parseTemplateType\(templateTypeInput\)/);
+  assert.match(source, /const fileName = parseUploadFileName\(file\.name/);
+  assert.match(source, /allowedExtensions: \["\.docx"\]/);
   assert.match(source, /templateType,/);
 });
 

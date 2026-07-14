@@ -10,6 +10,7 @@ import { uploadLimits, validateFileSize } from "@/lib/request-limits";
 import { saveBuffer } from "@/lib/storage";
 import { parseTemplateName } from "@/lib/template-names";
 import { parseTemplateType } from "@/lib/template-types";
+import { parseUploadFileName } from "@/lib/upload-file-names";
 import { ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
@@ -60,16 +61,18 @@ export async function POST(request: Request) {
     }
     const name = parseTemplateName(nameInput);
     const templateType = parseTemplateType(templateTypeInput);
-    if (!file.name.toLowerCase().endsWith(".docx")) {
-      return NextResponse.json({ error: "Only DOCX template uploads are allowed." }, { status: 400 });
-    }
+    const fileName = parseUploadFileName(file.name, {
+      allowedExtensions: [".docx"],
+      label: "DOCX template",
+      extensionError: "Only DOCX template uploads are allowed."
+    });
     const sizeError = validateFileSize(file, uploadLimits.docxBytes, "DOCX template");
     if (sizeError) return sizeError;
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const placeholders = detectDocxPlaceholders(buffer);
     const placeholderNames = placeholders.map((placeholder) => placeholder.name);
-    const storageKey = await saveBuffer("templates", file.name, buffer);
+    const storageKey = await saveBuffer("templates", fileName, buffer);
 
     const autoMappings = placeholders
       .map((placeholder) => ({
@@ -90,7 +93,7 @@ export async function POST(request: Request) {
            uploaded_by = EXCLUDED.uploaded_by,
            uploaded_at = now()
          RETURNING id`,
-        [name, templateType, file.name, storageKey, placeholders, dbUser.id]
+        [name, templateType, fileName, storageKey, placeholders, dbUser.id]
       );
       const id = result.rows[0].id;
       await client.query("DELETE FROM field_mappings WHERE template_id = $1 AND NOT (placeholder = ANY($2::text[]))", [
@@ -110,7 +113,7 @@ export async function POST(request: Request) {
 
     await audit("template.upserted", "templates", {
       templateType,
-      originalFileName: file.name,
+      originalFileName: fileName,
       placeholderCount: placeholders.length,
       autoMappedCount: autoMappings.length
     }, templateId, dbUser.id);
