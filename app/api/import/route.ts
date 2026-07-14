@@ -28,6 +28,7 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     await saveBuffer("imports", file.name, buffer);
     const workbook = await readAdmissionsWorksheet(buffer);
+    const uploadedByCounselorId = user.roles.includes("Counselor") ? dbUser.id : undefined;
     const duplicateKeys = findDuplicateApplicantKeys(workbook.rows);
     const rowErrors = workbook.rows.map((row, index) => {
       const errors = validateBannerRow(row);
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
       const importId = importResult.rows[0].id;
       for (const [index, row] of workbook.rows.entries()) {
         if (invalidRowNumbers.has(index + 2)) continue;
-        const { columns, values } = rowToApplicantColumns(row, importId);
+        const { columns, values } = rowToApplicantColumns(row, importId, uploadedByCounselorId);
         const placeholders = values.map((_value, index) => `$${index + 1}`).join(", ");
         await client.query(
           `INSERT INTO applicants (${columns.join(", ")})

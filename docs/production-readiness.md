@@ -92,6 +92,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Confirm stale pending email sends older than the configured timeout are marked failed, audited, and reflected on the applicant row before retry.
 - Confirm each batch automation run creates a `batch.generated` audit entry with requested, generated, emailed, and failed counts.
 - If counselor ownership is used, set `applicants.counselor_user_id`; counselors can access unassigned applicants and applicants assigned to their user record, while Admin and Admissions Supervisor roles can access all records.
+- Confirm Banner exports uploaded by a Counselor account are automatically assigned to that counselor through `applicants.counselor_user_id`.
 - Generate sample letters for each `TemplateType`.
 - Open generated DOCX and PDF files and confirm logos, tables, headers, footers, signatures, and formatting are preserved.
 - Download generated letters individually and as a ZIP, then confirm corresponding audit events are created.

@@ -48,6 +48,8 @@ test("import route returns valid applicant ids for upload-time automation", asyn
   assert.match(source, /validApplicantIds/);
   assert.match(source, /buildAutomationPreflight/);
   assert.match(source, /preflight/);
+  assert.match(source, /uploadedByCounselorId = user\.roles\.includes\("Counselor"\) \? dbUser\.id : undefined/);
+  assert.match(source, /rowToApplicantColumns\(row, importId, uploadedByCounselorId\)/);
   assert.match(source, /invalidRowNumbers/);
   assert.match(source, /if \(invalidRowNumbers\.has\(index \+ 2\)\) continue/);
   assert.match(source, /invalidRows\.length \? "review" : "imported"/);

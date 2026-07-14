@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ExcelJS from "exceljs";
 import { HttpError } from "../lib/auth";
-import { readAdmissionsWorksheet, validateBannerRow } from "../lib/import-excel";
+import { readAdmissionsWorksheet, rowToApplicantColumns, validateBannerRow } from "../lib/import-excel";
 
 test("readAdmissionsWorksheet reads the Admissions worksheet and normalizes known Banner fields", async () => {
   const workbook = new ExcelJS.Workbook();
@@ -180,6 +180,26 @@ test("readAdmissionsWorksheet normalizes and validates Banner TemplateType codes
   assert.deepEqual(validateBannerRow({ ...result.rows[0], TemplateType: "BAD TYPE!" }), [
     "TemplateType must contain only letters, numbers, underscores, or hyphens, and be 80 characters or fewer"
   ]);
+});
+
+test("rowToApplicantColumns can assign counselor-owned imports", () => {
+  const { columns, values } = rowToApplicantColumns(
+    {
+      StudentID: "A001",
+      FirstName: "Maya",
+      LastName: "Singh",
+      Email: "maya@example.edu",
+      Program: "Nursing",
+      Campus: "City",
+      AdmissionStatus: "Admitted",
+      TemplateType: "UOFFER"
+    },
+    "00000000-0000-0000-0000-000000000001",
+    "11111111-1111-1111-1111-111111111111"
+  );
+
+  assert.equal(columns.at(-1), "counselor_user_id");
+  assert.equal(values.at(-1), "11111111-1111-1111-1111-111111111111");
 });
 
 test("upload route and UI only accept XLSX workbooks", async () => {

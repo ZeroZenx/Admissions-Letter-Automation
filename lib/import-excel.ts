@@ -105,26 +105,31 @@ function isIsoDate(value: string) {
   );
 }
 
-export function rowToApplicantColumns(row: ImportRow, importId: string) {
+export function rowToApplicantColumns(row: ImportRow, importId: string, counselorUserId?: string) {
   const columns = ["import_id"];
   const values: unknown[] = [importId];
 
   for (const field of bannerFields) {
     const dbField = bannerToDbField[field];
+    const value = row[field] ?? "";
     columns.push(dbField);
     if (field === "ProcessedByFlow") {
-      values.push(["true", "yes", "1"].includes(row[field].toLowerCase()));
-    } else if (field === "SentDate" && !row[field]) {
+      values.push(["true", "yes", "1"].includes(value.toLowerCase()));
+    } else if (field === "SentDate" && !value) {
       values.push(null);
-    } else if (field === "EmailStatus" && !row[field]) {
+    } else if (field === "EmailStatus" && !value) {
       values.push("Not Sent");
     } else {
-      values.push(row[field] || null);
+      values.push(value || null);
     }
   }
 
   columns.push("raw_data", "validation_errors");
   values.push(row, validateBannerRow(row));
+  if (counselorUserId) {
+    columns.push("counselor_user_id");
+    values.push(counselorUserId);
+  }
 
   return { columns, values };
 }
