@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { applicantFilterClauses, readApplicantFilters } from "@/lib/applicant-filters";
 import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
 import { bannerFields, bannerToDbField } from "@/lib/banner-fields";
@@ -9,14 +10,6 @@ import { counselorApplicantWhereClause, ensureDbUser } from "@/lib/user-context"
 
 export const runtime = "nodejs";
 
-const filterColumns: Record<string, string> = {
-  templateType: "template_type",
-  admissionStatus: "admission_status",
-  emailStatus: "email_status",
-  campus: "campus",
-  program: "program"
-};
-
 const dateFields = new Set(["DateGenerated", "BirthDate", "SentDate"]);
 
 export async function GET(request: Request) {
@@ -25,15 +18,10 @@ export async function GET(request: Request) {
     const dbUser = await ensureDbUser(user);
     const url = new URL(request.url);
     const clauses: string[] = [];
-    const params: string[] = [];
+    const params: unknown[] = [];
+    const filters = readApplicantFilters(url);
 
-    for (const [param, column] of Object.entries(filterColumns)) {
-      const value = url.searchParams.get(param);
-      if (value) {
-        params.push(value);
-        clauses.push(`${column} = $${params.length}`);
-      }
-    }
+    clauses.push(...applicantFilterClauses(filters, params));
     const ownership = counselorApplicantWhereClause(user, dbUser.id, params.length + 1);
     if (ownership.clause) {
       clauses.push(ownership.clause);
@@ -86,7 +74,7 @@ export async function GET(request: Request) {
 
     await audit("applicants.exported", "applicants", {
       exportedCount: result.rows.length,
-      filters: Object.fromEntries(url.searchParams.entries())
+      filters
     }, undefined, dbUser.id);
 
     const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
