@@ -196,6 +196,8 @@ test("letter generation records applicant and generated-letter failures", async 
   const source = await readFile("app/api/generate-letter/route.ts", "utf8");
 
   assert.match(source, /throw new HttpError\(400, `No active template for \$\{applicant\.template_type\}\.`/);
+  assert.match(source, /hasValidationErrors\(applicant\.validation_errors\)/);
+  assert.match(source, /has source-truth validation errors\. Correct the Banner row before generating a letter\./);
   assert.match(source, /UPDATE applicants SET error_message = \$1, processed_by_flow = false WHERE id = \$2/);
   assert.match(source, /UPDATE generated_letters SET status = 'failed', error_message = \$1 WHERE id = \$2/);
   assert.match(source, /letter\.failed/);
@@ -302,6 +304,28 @@ test("bulk generation can send generated PDFs and persist row-level failures", a
   assert.match(source, /generatedCount/);
   assert.match(source, /emailedCount/);
   assert.match(source, /failedCount/);
+});
+
+test("bulk generation preflights selected applicants before starting automation", async () => {
+  const source = await readFile("app/api/generate-bulk/route.ts", "utf8");
+
+  assert.match(source, /buildBulkAutomationPreflight\(body\.applicantIds, user, dbUser\.id\)/);
+  assert.match(source, /missingOrUnavailableCount > 0/);
+  assert.match(source, /invalidApplicantCount > 0/);
+  assert.match(source, /blockedTemplates\.length > 0/);
+  assert.match(source, /Automation preflight blocked/);
+  assert.match(source, /counselorApplicantWhereClause\(user, dbUserId, 2\)/);
+  assert.match(source, /WHERE id = ANY\(\$1::uuid\[\]\)/);
+  assert.match(source, /validation_errors/);
+  assert.match(source, /t\.template_type = ANY\(\$1::text\[\]\)/);
+  assert.match(source, /missing_template/);
+  assert.match(source, /inactive_template/);
+  assert.match(source, /missing_mappings/);
+
+  const preflightIndex = source.indexOf("buildBulkAutomationPreflight(body.applicantIds, user, dbUser.id)");
+  const firstGenerationIndex = source.indexOf('fetch(`${origin}/api/generate-letter`');
+  assert.ok(preflightIndex > -1);
+  assert.ok(firstGenerationIndex > preflightIndex);
 });
 
 test("bulk generation keeps row-level failures when internal APIs return non-json", async () => {

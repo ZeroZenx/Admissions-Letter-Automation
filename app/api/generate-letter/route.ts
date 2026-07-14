@@ -36,6 +36,9 @@ export async function POST(request: Request) {
     failureStudentId = applicant.student_id;
     failureTemplateType = applicant.template_type;
     enforceApplicantOwnership(user, dbUser.id, applicant);
+    if (hasValidationErrors(applicant.validation_errors)) {
+      throw new HttpError(400, `Applicant ${String(applicant.student_id ?? "")} has source-truth validation errors. Correct the Banner row before generating a letter.`);
+    }
 
     const templateResult = await query<Record<string, unknown>>(
       "SELECT * FROM templates WHERE template_type = $1 AND is_active = true",
@@ -142,4 +145,8 @@ function missingTemplateMappings(
         .filter((name): name is string => typeof name === "string" && name.length > 0)
     : [];
   return placeholderNames.filter((name) => !mapped.has(name));
+}
+
+function hasValidationErrors(value: unknown) {
+  return Array.isArray(value) && value.length > 0;
 }

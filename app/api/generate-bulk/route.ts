@@ -6,7 +6,7 @@ import { query } from "@/lib/db";
 import { getAuthEnv } from "@/lib/env";
 import { handleApiError } from "@/lib/http";
 import { uploadLimits } from "@/lib/request-limits";
-import { ensureDbUser } from "@/lib/user-context";
+import { counselorApplicantWhereClause, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
 
@@ -34,6 +34,19 @@ export async function POST(request: Request) {
     }
     if (body.sendEmail && authEnv.AUTH_MODE !== "development" && !graphAccessToken) {
       return NextResponse.json({ error: "Microsoft Graph token is required when sendEmail is true." }, { status: 401 });
+    }
+    const preflight = await buildBulkAutomationPreflight(body.applicantIds, user, dbUser.id);
+    if (preflight.missingOrUnavailableCount > 0) {
+      return NextResponse.json({ error: "One or more selected applicants were not found or are not available to this user." }, { status: 404 });
+    }
+    if (preflight.invalidApplicantCount > 0) {
+      return NextResponse.json({ error: "Selected applicants include source-truth rows with validation errors. Correct those rows before generating letters." }, { status: 400 });
+    }
+    if (preflight.blockedTemplates.length > 0) {
+      return NextResponse.json({
+        error: `Automation preflight blocked ${preflight.blockedTemplates.map(formatBlockedTemplate).join("; ")}.`,
+        preflight: preflight.blockedTemplates
+      }, { status: 400 });
     }
 
     for (const applicantId of body.applicantIds) {
@@ -144,4 +157,81 @@ async function readResponseJson(response: Response) {
   } catch {
     return { error: `${response.status} ${response.statusText || "Non-JSON response"}` };
   }
+}
+
+async function buildBulkAutomationPreflight(applicantIds: string[], user: Awaited<ReturnType<typeof requireAuth>>, dbUserId: string) {
+  const ownership = counselorApplicantWhereClause(user, dbUserId, 2);
+  const applicants = await query<{ template_type: string; validation_errors: unknown }>(
+    `SELECT template_type, validation_errors
+       FROM applicants
+      WHERE id = ANY($1::uuid[])
+        ${ownership.clause ? `AND ${ownership.clause}` : ""}`,
+    [applicantIds, ...ownership.params]
+  );
+  const invalidApplicantCount = applicants.rows.filter((applicant) => hasValidationErrors(applicant.validation_errors)).length;
+  const requiredTemplateTypes = [...new Set(applicants.rows.map((applicant) => applicant.template_type))];
+  if (requiredTemplateTypes.length === 0) {
+    return {
+      missingOrUnavailableCount: applicantIds.length,
+      invalidApplicantCount,
+      blockedTemplates: [] as BulkTemplatePreflight[]
+    };
+  }
+
+  const templates = await query<{
+    template_type: string;
+    is_active: boolean;
+    placeholders: Array<{ name?: string }>;
+    mapped_placeholders: string[];
+  }>(
+    `SELECT t.template_type, t.is_active, t.placeholders,
+            COALESCE(array_agg(fm.placeholder) FILTER (WHERE fm.id IS NOT NULL), ARRAY[]::text[]) AS mapped_placeholders
+       FROM templates t
+       LEFT JOIN field_mappings fm ON fm.template_id = t.id
+      WHERE t.template_type = ANY($1::text[])
+      GROUP BY t.id`,
+    [requiredTemplateTypes]
+  );
+  const templateMap = new Map(templates.rows.map((template) => [template.template_type, template]));
+  const blockedTemplates = requiredTemplateTypes
+    .map((templateType) => {
+      const template = templateMap.get(templateType);
+      const placeholderNames = Array.isArray(template?.placeholders)
+        ? template.placeholders.map((placeholder) => placeholder.name).filter((name): name is string => Boolean(name))
+        : [];
+      const mapped = new Set(template?.mapped_placeholders ?? []);
+      const missingPlaceholderNames = placeholderNames.filter((name) => !mapped.has(name));
+      const status = !template ? "missing_template" : !template.is_active ? "inactive_template" : missingPlaceholderNames.length ? "missing_mappings" : "ready";
+      return {
+        templateType,
+        status,
+        ready: status === "ready",
+        missingPlaceholderNames
+      };
+    })
+    .filter((template) => !template.ready);
+
+  return {
+    missingOrUnavailableCount: applicantIds.length - applicants.rows.length,
+    invalidApplicantCount,
+    blockedTemplates
+  };
+}
+
+type BulkTemplatePreflight = {
+  templateType: string;
+  status: string;
+  ready: boolean;
+  missingPlaceholderNames: string[];
+};
+
+function formatBlockedTemplate(template: BulkTemplatePreflight) {
+  if (template.status === "missing_mappings") {
+    return `${template.templateType}: missing mappings for ${template.missingPlaceholderNames.join(", ")}`;
+  }
+  return `${template.templateType}: ${template.status}`;
+}
+
+function hasValidationErrors(value: unknown) {
+  return Array.isArray(value) && value.length > 0;
 }
