@@ -24,6 +24,7 @@ test("database setup script includes operational integrity migration", async () 
   assert.match(packageJson.scripts["db:migrate"], /009_applicant_duplicate_send_integrity\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /010_applicant_status_consistency\.sql/);
   assert.match(packageJson.scripts["db:migrate"], /011_template_name_integrity\.sql/);
+  assert.match(packageJson.scripts["db:migrate"], /012_field_mapping_fallback_integrity\.sql/);
 });
 
 test("query performance migration covers operational dashboard and automation queries", async () => {
@@ -115,4 +116,13 @@ test("template name integrity migration bounds display names", async () => {
   assert.match(sql, /\^\[\^\[:cntrl:\]\]\{1,160\}\$/);
   assert.match(sql, /invalid name value/);
   assert.match(sql, /Names must be 160 characters or fewer/);
+});
+
+test("field mapping fallback migration bounds generated-letter fallback text", async () => {
+  const sql = await readFile("db/migrations/012_field_mapping_fallback_integrity.sql", "utf8");
+
+  assert.match(sql, /field_mappings_fallback_value_length_chk/);
+  assert.match(sql, /char_length\(fallback_value\) > 2000/);
+  assert.match(sql, /fallback_value IS NULL OR char_length\(fallback_value\) <= 2000/);
+  assert.match(sql, /fallback_value value\(s\) longer than 2000 characters/);
 });

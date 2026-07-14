@@ -9,13 +9,15 @@ import { ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
 
+const maxFallbackValueLength = 2000;
+
 const schema = z.object({
   templateId: z.string().uuid(),
   mappings: z.array(
     z.object({
       placeholder: z.string().min(1),
       bannerField: z.enum(mappableLetterFields),
-      fallbackValue: z.string().optional()
+      fallbackValue: z.string().trim().max(maxFallbackValueLength).optional()
     })
   )
 });
@@ -52,7 +54,7 @@ export async function POST(request: Request) {
         await client.query(
           `INSERT INTO field_mappings (template_id, placeholder, banner_field, fallback_value)
            VALUES ($1, $2, $3, $4)`,
-          [body.templateId, mapping.placeholder, mapping.bannerField, mapping.fallbackValue ?? null]
+          [body.templateId, mapping.placeholder, mapping.bannerField, mapping.fallbackValue || null]
         );
       }
     });
