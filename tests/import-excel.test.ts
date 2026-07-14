@@ -56,6 +56,52 @@ test("readAdmissionsWorksheet reads the Admissions worksheet and normalizes know
   assert.equal(result.rows[0].TemplateType, "UOFFER");
 });
 
+test("readAdmissionsWorksheet accepts human-spaced operational headers", async () => {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Admissions");
+  sheet.addRow([
+    "StudentID",
+    "FirstName",
+    "LastName",
+    "Email",
+    "Program",
+    "Campus",
+    "AdmissionStatus",
+    "Email Status",
+    "Sent Date",
+    "Word File Name",
+    "PDF File Name",
+    "Error Message",
+    "Processed By Flow",
+    "Process Flow"
+  ]);
+  sheet.addRow([
+    "A002",
+    "Noah",
+    "Ramdial",
+    "noah@example.edu",
+    "Business",
+    "Main",
+    "Conditional",
+    "Failed",
+    "",
+    "A002-CONDOFFER.docx",
+    "A002-CONDOFFER.pdf",
+    "Missing CSEC result",
+    "yes",
+    "CONDOFFER_CSEC_PT"
+  ]);
+
+  const result = await readAdmissionsWorksheet(Buffer.from(await workbook.xlsx.writeBuffer()));
+
+  assert.equal(result.rows[0].EmailStatus, "Failed");
+  assert.equal(result.rows[0].WordFileName, "A002-CONDOFFER.docx");
+  assert.equal(result.rows[0].PDFFileName, "A002-CONDOFFER.pdf");
+  assert.equal(result.rows[0].ErrorMessage, "Missing CSEC result");
+  assert.equal(result.rows[0].ProcessedByFlow, "yes");
+  assert.equal(result.rows[0].TemplateType, "CONDOFFER_CSEC_PT");
+});
+
 test("readAdmissionsWorksheet rejects workbooks without Admissions as a bad upload", async () => {
   const workbook = new ExcelJS.Workbook();
   workbook.addWorksheet("Sheet1").addRow(["StudentID"]);

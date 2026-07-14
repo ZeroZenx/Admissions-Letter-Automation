@@ -51,6 +51,14 @@ export const bannerFields = [
 
 export type BannerField = (typeof bannerFields)[number];
 
+export const statusExportFields = [
+  ...bannerFields.slice(0, bannerFields.indexOf("TemplateType")),
+  "ProcessFlow",
+  "TemplateType"
+] as const;
+
+export type StatusExportField = (typeof statusExportFields)[number];
+
 export const derivedLetterFields = [
   "FullName",
   "Today"
@@ -101,4 +109,9 @@ export const bannerToDbField: Record<BannerField, string> = {
   ErrorMessage: "error_message",
   ProcessedByFlow: "processed_by_flow",
   TemplateType: "template_type"
+};
+
+export const statusExportToDbField: Record<StatusExportField, string> = {
+  ...bannerToDbField,
+  ProcessFlow: "template_type"
 };

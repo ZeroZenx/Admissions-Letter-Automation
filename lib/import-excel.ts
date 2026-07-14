@@ -7,6 +7,22 @@ export type ImportRow = Record<string, string>;
 
 const dateBannerFields = ["DateGenerated", "BirthDate", "SentDate"] as const;
 const emailStatuses = ["Not Sent", "Queued", "Sending", "Sent", "Failed"] as const;
+const headerAliases = new Map<string, string>([
+  ["emailstatus", "EmailStatus"],
+  ["email status", "EmailStatus"],
+  ["sentdate", "SentDate"],
+  ["sent date", "SentDate"],
+  ["wordfilename", "WordFileName"],
+  ["word file name", "WordFileName"],
+  ["pdffilename", "PDFFileName"],
+  ["pdf file name", "PDFFileName"],
+  ["errormessage", "ErrorMessage"],
+  ["error message", "ErrorMessage"],
+  ["processedbyflow", "ProcessedByFlow"],
+  ["processed by flow", "ProcessedByFlow"],
+  ["processflow", "TemplateType"],
+  ["process flow", "TemplateType"]
+]);
 
 export async function readAdmissionsWorksheet(buffer: Buffer) {
   const workbook = new ExcelJS.Workbook();
@@ -19,7 +35,7 @@ export async function readAdmissionsWorksheet(buffer: Buffer) {
   const headerRow = worksheet.getRow(1);
   const headers = new Map<number, string>();
   headerRow.eachCell((cell, columnNumber) => {
-    headers.set(columnNumber, String(cell.value ?? "").trim());
+    headers.set(columnNumber, normalizeHeader(String(cell.value ?? "")));
   });
 
   const rows: Record<string, unknown>[] = [];
@@ -36,6 +52,12 @@ export async function readAdmissionsWorksheet(buffer: Buffer) {
     worksheetName: worksheet.name,
     rows: rows.map(normalizeRow)
   };
+}
+
+function normalizeHeader(value: string) {
+  const trimmed = value.trim();
+  const compact = trimmed.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  return headerAliases.get(trimmed.toLowerCase()) ?? headerAliases.get(compact) ?? trimmed;
 }
 
 function cellToString(value: ExcelJS.CellValue) {

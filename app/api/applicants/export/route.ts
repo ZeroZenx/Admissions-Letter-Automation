@@ -2,7 +2,7 @@ import ExcelJS from "exceljs";
 import { applicantFilterClauses, readApplicantFilters } from "@/lib/applicant-filters";
 import { audit } from "@/lib/audit";
 import { requireAuth } from "@/lib/auth";
-import { bannerFields, bannerToDbField } from "@/lib/banner-fields";
+import { statusExportFields, statusExportToDbField } from "@/lib/banner-fields";
 import { query } from "@/lib/db";
 import { handleApiError } from "@/lib/http";
 import { uploadLimits } from "@/lib/limits";
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const dbColumns = bannerFields.map((field) => bannerToDbField[field]);
+    const dbColumns = [...new Set(statusExportFields.map((field) => statusExportToDbField[field]))];
     const result = await query<Record<string, unknown>>(
       `SELECT ${dbColumns.join(", ")}
          FROM applicants
@@ -57,18 +57,18 @@ export async function GET(request: Request) {
     workbook.creator = "COSTAATT Admissions Letter Automation";
     workbook.created = new Date();
     const worksheet = workbook.addWorksheet("Admissions");
-    worksheet.columns = bannerFields.map((field) => ({ header: field, key: field, width: Math.max(14, field.length + 2) }));
+    worksheet.columns = statusExportFields.map((field) => ({ header: field, key: field, width: Math.max(14, field.length + 2) }));
     worksheet.getRow(1).font = { bold: true };
     worksheet.autoFilter = {
       from: "A1",
-      to: `${excelColumnLetter(bannerFields.length)}1`
+      to: `${excelColumnLetter(statusExportFields.length)}1`
     };
     for (const field of dateFields) {
       worksheet.getColumn(field).numFmt = "yyyy-mm-dd";
     }
 
     for (const row of result.rows) {
-      worksheet.addRow(Object.fromEntries(bannerFields.map((field) => [field, exportValue(field, row[bannerToDbField[field]])])));
+      worksheet.addRow(Object.fromEntries(statusExportFields.map((field) => [field, exportValue(field, row[statusExportToDbField[field]])])));
     }
     worksheet.views = [{ state: "frozen", ySplit: 1 }];
 
