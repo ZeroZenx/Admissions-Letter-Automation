@@ -15,8 +15,11 @@ test("CI release gate builds the Docker image", async () => {
 
 test("CI validates the native application on Windows", async () => {
   const workflow = await readFile(".github/workflows/ci.yml", "utf8");
+  const attributes = await readFile(".gitattributes", "utf8");
 
   assert.match(workflow, /windows-validate:/);
   assert.match(workflow, /runs-on: windows-latest/);
   assert.match(workflow, /SOFFICE_PATH: soffice\.exe/);
+  assert.match(attributes, /\* text=auto eol=lf/);
+  assert.match(attributes, /\*\.docx binary/);
 });
