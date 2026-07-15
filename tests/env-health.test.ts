@@ -14,6 +14,17 @@ test("health check validates browser Entra and Graph send configuration", async 
   assert.match(healthSource, /graphScopes=/);
 });
 
+test("production authentication fails closed when development mode is accidentally configured", async () => {
+  const envSource = await readFile("lib/env.ts", "utf8");
+  const composeSource = await readFile("docker-compose.yml", "utf8");
+  const dockerfile = await readFile("Dockerfile", "utf8");
+
+  assert.match(envSource, /ALLOW_INSECURE_DEVELOPMENT_AUTH/);
+  assert.match(envSource, /Development authentication is disabled in production/);
+  assert.match(composeSource, /ALLOW_INSECURE_DEVELOPMENT_AUTH: "true"/);
+  assert.match(dockerfile, /ARG NEXT_PUBLIC_AUTH_MODE=entra/);
+});
+
 test("health check proves storage and PDF converter runtime readiness", async () => {
   const healthSource = await readFile("app/api/health/route.ts", "utf8");
 

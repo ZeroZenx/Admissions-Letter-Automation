@@ -52,6 +52,8 @@ cp .env.example .env.local
 
 For local development, keep `AUTH_MODE=development`. Production deployments should use `AUTH_MODE=entra` and set `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_API_AUDIENCE`, and the matching `NEXT_PUBLIC_ENTRA_*` values.
 
+Production builds reject development authentication unless `ALLOW_INSECURE_DEVELOPMENT_AUTH=true` is deliberately set for an isolated test environment. Never use that override on a staff-accessible deployment.
+
 4. Run migrations and seed data:
 
 ```bash

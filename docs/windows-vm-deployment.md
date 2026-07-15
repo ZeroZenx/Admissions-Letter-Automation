@@ -56,10 +56,12 @@ APP_STORAGE_DIR=C:/COSTAATT/AdmissionsLetterStorage
 SOFFICE_PATH=C:/Program Files/LibreOffice/program/soffice.exe
 AUTH_MODE=development
 NEXT_PUBLIC_AUTH_MODE=development
+ALLOW_INSECURE_DEVELOPMENT_AUTH=true
 NEXT_PUBLIC_ENTRA_REDIRECT_URI=https://admissions.example.edu
 ```
 
 For production Entra sign-in, change `AUTH_MODE` and `NEXT_PUBLIC_AUTH_MODE` to `entra`, then set all `ENTRA_*` and `NEXT_PUBLIC_ENTRA_*` values listed in `.env.example`.
+Remove `ALLOW_INSECURE_DEVELOPMENT_AUTH=true` (or set it to `false`) before exposing the app to staff. Production-mode development authentication fails closed unless this isolated-testing override is explicitly enabled.
 In production, use the HTTPS hostname that staff will open, not `localhost`. In Microsoft Entra, register both the app origin, such as `https://admissions.example.edu`, and the `/login` URL, such as `https://admissions.example.edu/login`, as single-page application redirect URIs. Keep `APP_BASE_URL` and `NEXT_PUBLIC_ENTRA_REDIRECT_URI` set to that same public origin.
 
 5. Create the storage directory:

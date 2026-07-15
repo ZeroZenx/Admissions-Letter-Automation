@@ -26,6 +26,7 @@ Use this checklist before enabling COSTAATT staff access.
 ## Application Configuration
 
 - `AUTH_MODE=entra`
+- `ALLOW_INSECURE_DEVELOPMENT_AUTH=false`
 - `ENTRA_TENANT_ID` is set.
 - `ENTRA_CLIENT_ID` is set.
 - `ENTRA_API_AUDIENCE` matches the exposed API audience.
@@ -35,6 +36,7 @@ Use this checklist before enabling COSTAATT staff access.
 - `NEXT_PUBLIC_ENTRA_REDIRECT_URI` is set and matches the deployed origin used by staff, for example `https://admissions.example.edu`.
 - `NEXT_PUBLIC_ENTRA_API_SCOPE` matches the exposed API scope.
 - `NEXT_PUBLIC_GRAPH_SCOPES=User.Read Mail.Send`
+- Container builds receive the production `NEXT_PUBLIC_ENTRA_*` values as Docker build arguments because Next.js embeds public environment values at build time.
 - `APP_STORAGE_DIR` points to persistent storage.
 - Configure default email subject/body in the Settings page after deployment.
 - Configure the stale pending send timeout in Settings. Default is 30 minutes; allowed range is 5 to 1440 minutes.

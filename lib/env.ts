@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const authEnvSchema = z.object({
   AUTH_MODE: z.enum(["development", "entra"]).default(process.env.NODE_ENV === "production" ? "entra" : "development"),
+  ALLOW_INSECURE_DEVELOPMENT_AUTH: z.enum(["true", "false"]).default("false"),
   ENTRA_TENANT_ID: z.string().optional(),
   ENTRA_CLIENT_ID: z.string().optional(),
   ENTRA_API_AUDIENCE: z.string().optional()
@@ -32,6 +33,7 @@ const serverEnvSchema = authEnvSchema.merge(dbEnvSchema).merge(storageEnvSchema)
 
 export function getAuthEnv() {
   const env = authEnvSchema.parse(process.env);
+  assertSafeDevelopmentAuth(env.AUTH_MODE, env.ALLOW_INSECURE_DEVELOPMENT_AUTH);
   if (env.AUTH_MODE === "entra" && (!env.ENTRA_TENANT_ID || !env.ENTRA_CLIENT_ID)) {
     throw new Error("ENTRA_TENANT_ID and ENTRA_CLIENT_ID are required when AUTH_MODE=entra.");
   }
@@ -52,6 +54,7 @@ export function getPdfEnv() {
 
 export function getClientAuthEnv() {
   const env = clientAuthEnvSchema.parse(process.env);
+  assertSafeDevelopmentAuth(env.NEXT_PUBLIC_AUTH_MODE, process.env.ALLOW_INSECURE_DEVELOPMENT_AUTH);
   const graphScopes = env.NEXT_PUBLIC_GRAPH_SCOPES.split(/\s+/).filter(Boolean);
   if (env.NEXT_PUBLIC_AUTH_MODE === "entra") {
     const missing = [
@@ -68,8 +71,17 @@ export function getClientAuthEnv() {
 
 export function getServerEnv() {
   const env = serverEnvSchema.parse(process.env);
+  assertSafeDevelopmentAuth(env.AUTH_MODE, env.ALLOW_INSECURE_DEVELOPMENT_AUTH);
   if (env.AUTH_MODE === "entra" && (!env.ENTRA_TENANT_ID || !env.ENTRA_CLIENT_ID)) {
     throw new Error("ENTRA_TENANT_ID and ENTRA_CLIENT_ID are required when AUTH_MODE=entra.");
   }
   return env;
+}
+
+function assertSafeDevelopmentAuth(mode: "development" | "entra", override: string | undefined) {
+  if (process.env.NODE_ENV === "production" && mode === "development" && override !== "true") {
+    throw new Error(
+      "Development authentication is disabled in production. Configure Microsoft Entra or explicitly set ALLOW_INSECURE_DEVELOPMENT_AUTH=true for isolated testing."
+    );
+  }
 }

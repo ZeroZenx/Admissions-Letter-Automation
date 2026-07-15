@@ -16,7 +16,10 @@ services:
       retries: 12
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_AUTH_MODE: development
     depends_on:
       db:
         condition: service_healthy
@@ -24,6 +27,7 @@ services:
       NODE_ENV: production
       AUTH_MODE: development
       NEXT_PUBLIC_AUTH_MODE: development
+      ALLOW_INSECURE_DEVELOPMENT_AUTH: "true"
       DATABASE_URL: postgres://postgres:postgres@db:5432/costaatt_admissions
       APP_STORAGE_DIR: /app/storage
       SOFFICE_PATH: /usr/bin/libreoffice
