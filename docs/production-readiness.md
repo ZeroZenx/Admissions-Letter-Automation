@@ -113,6 +113,8 @@ Use this checklist before enabling COSTAATT staff access.
 
 ## Release Gate
 
+GitHub Actions must pass both the Linux/PostgreSQL/Docker validation job and the native Windows install, test, and production-build job.
+
 Run:
 
 ```bash

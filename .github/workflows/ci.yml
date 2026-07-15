@@ -78,3 +78,37 @@ jobs:
 
       - name: Build Docker image
         run: docker build --tag costaatt-admissions-letter-automation:ci .
+
+  windows-validate:
+    runs-on: windows-latest
+    env:
+      AUTH_MODE: development
+      NEXT_PUBLIC_AUTH_MODE: development
+      ALLOW_INSECURE_DEVELOPMENT_AUTH: "true"
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/costaatt_admissions
+      APP_STORAGE_DIR: ./storage
+      SOFFICE_PATH: soffice.exe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
