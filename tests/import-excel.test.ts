@@ -246,6 +246,8 @@ test("rowToApplicantColumns can assign counselor-owned imports", () => {
 
   assert.equal(columns.at(-1), "counselor_user_id");
   assert.equal(values.at(-1), "11111111-1111-1111-1111-111111111111");
+  assert.equal(values[columns.indexOf("validation_errors")], "[]");
+  assert.equal((values[columns.indexOf("raw_data")] as Record<string, string>).StudentID, "A001");
 });
 
 test("upload route and UI only accept XLSX workbooks", async () => {

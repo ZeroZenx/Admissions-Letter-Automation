@@ -147,7 +147,7 @@ export function rowToApplicantColumns(row: ImportRow, importId: string, counselo
   }
 
   columns.push("raw_data", "validation_errors");
-  values.push(row, validateBannerRow(row));
+  values.push(row, JSON.stringify(validateBannerRow(row)));
   if (counselorUserId) {
     columns.push("counselor_user_id");
     values.push(counselorUserId);

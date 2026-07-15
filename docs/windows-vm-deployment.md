@@ -51,16 +51,16 @@ For a Windows VM, set paths with forward slashes or escaped backslashes. Example
 
 ```ini
 DATABASE_URL=postgres://postgres:YOUR_PASSWORD@localhost:5432/costaatt_admissions
-APP_BASE_URL=http://localhost:6001
+APP_BASE_URL=https://admissions.example.edu
 APP_STORAGE_DIR=C:/COSTAATT/AdmissionsLetterStorage
 SOFFICE_PATH=C:/Program Files/LibreOffice/program/soffice.exe
 AUTH_MODE=development
 NEXT_PUBLIC_AUTH_MODE=development
-NEXT_PUBLIC_ENTRA_REDIRECT_URI=http://localhost:6001
+NEXT_PUBLIC_ENTRA_REDIRECT_URI=https://admissions.example.edu
 ```
 
 For production Entra sign-in, change `AUTH_MODE` and `NEXT_PUBLIC_AUTH_MODE` to `entra`, then set all `ENTRA_*` and `NEXT_PUBLIC_ENTRA_*` values listed in `.env.example`.
-In Microsoft Entra, register both the VM app origin, such as `http://localhost:6001`, and the `/login` URL, such as `http://localhost:6001/login`, as single-page application redirect URIs. Keep `NEXT_PUBLIC_ENTRA_REDIRECT_URI` set to the origin users open in the browser.
+In production, use the HTTPS hostname that staff will open, not `localhost`. In Microsoft Entra, register both the app origin, such as `https://admissions.example.edu`, and the `/login` URL, such as `https://admissions.example.edu/login`, as single-page application redirect URIs. Keep `APP_BASE_URL` and `NEXT_PUBLIC_ENTRA_REDIRECT_URI` set to that same public origin.
 
 5. Create the storage directory:
 
@@ -68,11 +68,13 @@ In Microsoft Entra, register both the VM app origin, such as `http://localhost:6
 New-Item -ItemType Directory -Force C:\COSTAATT\AdmissionsLetterStorage
 ```
 
-6. Apply database schema and seed data:
+6. Apply the database schema and install the bundled COSTAATT templates:
 
 ```powershell
 npm run db:setup
 ```
+
+The command installs and activates all six supplied Word templates with their field mappings. It is safe to re-run after an update and will preserve administrator-uploaded replacements.
 
 7. Validate the app:
 
@@ -91,6 +93,8 @@ Open:
 ```text
 http://127.0.0.1:6001
 ```
+
+The server listens on all VM network interfaces. From another staff computer, use the VM hostname or production HTTPS address. Allow inbound TCP `6001` in Windows Firewall only when connecting directly; when using IIS or another HTTPS reverse proxy, expose `443` and keep `6001` restricted to the VM/proxy.
 
 Check runtime readiness:
 
@@ -144,6 +148,7 @@ http://localhost:6001
 ## Troubleshooting
 
 - Blank white page or `Cannot find module './331.js'`: stop the running Next.js process, run `npm run build`, then start the app again so HTML and JavaScript chunks match.
+- App opens on the VM but not another computer: confirm staff are using the VM hostname or HTTPS address, Windows Firewall permits the intended port, and the reverse proxy forwards to `http://127.0.0.1:6001`.
 - Pending email stuck: check Settings stale pending send timeout, then retry after the system marks the stale send failed.
 - Excel upload rejected: export Banner as `.xlsx`; legacy `.xls` files are not accepted.
 - PDF conversion fails: confirm `SOFFICE_PATH` points to `soffice.exe` and `/api/health` reports the PDF check as healthy.

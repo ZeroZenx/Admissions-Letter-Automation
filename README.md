@@ -11,6 +11,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Store imports, applicants, templates, field mappings, generated letters, and audit logs in PostgreSQL.
 - Manage DOCX templates and detect placeholders from `«FIELD_NAME»`, `{{FIELD_NAME}}`, and Word content-control placeholder text.
 - Template placeholders that normalize to Banner or derived letter fields are auto-mapped on upload.
+- The six supplied COSTAATT production templates are bundled, mapped, activated, and copied to persistent storage by `npm run db:setup`.
 - Activate or deactivate managed templates without deleting historical generated-letter references.
 - Map detected placeholders to Banner fields.
 - Generate completed DOCX files while preserving the original DOCX package formatting.
@@ -56,6 +57,8 @@ For local development, keep `AUTH_MODE=development`. Production deployments shou
 ```bash
 npm run db:setup
 ```
+
+This also installs the bundled Word templates and their field mappings. Re-running setup refreshes managed bundled copies but preserves templates uploaded by an administrator.
 
 5. Start the app:
 
@@ -126,6 +129,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 ## Notes
 
 - Banner remains the source of truth. This app imports Banner data into a staging database only.
+- A fresh deployment includes active mappings for `ACKNOWLEDGEMENT`, `DFTEMPLATE`, `CFULFILLED_NOGATE`, `CONDOFFER_CSEC_PT`, `CONDOFFER_NURSING`, and `UOFFER`.
 - Admissions staff can review source-truth email status, sent date, generated file names, error message, processing flag, and selected template per applicant.
 - Generation failures are written back to applicant error fields and generated-letter failure status.
 - Email sending can be run from the Email Queue or explicitly enabled on upload for a full import/generate/send batch.

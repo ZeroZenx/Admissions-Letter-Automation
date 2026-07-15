@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { audit } from "@/lib/audit";
-import { requireAuth } from "@/lib/auth";
+import { HttpError, requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { letterDownloadFileName } from "@/lib/download-filenames";
 import { handleApiError } from "@/lib/http";
@@ -8,12 +9,16 @@ import { readStorageBuffer, storageFileExists } from "@/lib/storage";
 import { enforceApplicantOwnership, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
+const generatedLetterIdSchema = z.string().uuid();
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
     const dbUser = await ensureDbUser(user);
     const { id } = await params;
+    if (!generatedLetterIdSchema.safeParse(id).success) {
+      throw new HttpError(400, "Generated letter id must be a valid UUID.");
+    }
     const url = new URL(request.url);
     const requestedType = url.searchParams.get("type") ?? "pdf";
     if (requestedType !== "pdf" && requestedType !== "docx") {

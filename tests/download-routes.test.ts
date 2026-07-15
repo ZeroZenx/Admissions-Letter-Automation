@@ -56,6 +56,17 @@ test("individual download route audits downloads without returning storage paths
   assert.doesNotMatch(source, /NextResponse\.json\([^)]*storage_key/s);
 });
 
+test("individual download route rejects malformed generated-letter ids before querying PostgreSQL", async () => {
+  const source = await readFile("app/api/download/[id]/route.ts", "utf8");
+
+  assert.match(source, /const generatedLetterIdSchema = z\.string\(\)\.uuid\(\)/);
+  assert.match(source, /throw new HttpError\(400, "Generated letter id must be a valid UUID\."\)/);
+  const validationIndex = source.indexOf("generatedLetterIdSchema.safeParse(id)");
+  const queryIndex = source.indexOf("SELECT gl.${column}");
+  assert.ok(validationIndex > -1);
+  assert.ok(queryIndex > validationIndex);
+});
+
 test("letter download filenames are safe and deduplicated", async () => {
   const source = await readFile("lib/download-filenames.ts", "utf8");
 

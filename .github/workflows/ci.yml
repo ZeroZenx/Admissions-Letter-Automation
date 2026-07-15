@@ -65,7 +65,7 @@ jobs:
       - name: Smoke test
         run: |
           for i in {1..30}; do
-            if curl -fsS http://127.0.0.1:3000/api/health > /tmp/health.json; then
+            if curl -fsS http://127.0.0.1:6001/api/health > /tmp/health.json; then
               break
             fi
             sleep 2

@@ -72,7 +72,7 @@ Use this checklist before enabling COSTAATT staff access.
 ## Data And Document Validation
 
 - Run `npm run db:setup` once per environment.
-- Upload each production DOCX template and verify detected placeholders.
+- Run `npm run db:setup` and confirm all six bundled production DOCX templates are active with complete mappings. Upload a replacement only when an administrator intentionally supersedes a bundled template.
 - Deactivate obsolete seed or retired templates and confirm they are not available for new field mappings or generation.
 - Map every detected placeholder to a Banner field or fallback.
 - Confirm field mapping updates reject placeholder names that were not detected in the selected template.

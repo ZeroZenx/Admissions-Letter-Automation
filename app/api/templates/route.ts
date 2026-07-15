@@ -93,7 +93,7 @@ export async function POST(request: Request) {
            uploaded_by = EXCLUDED.uploaded_by,
            uploaded_at = now()
          RETURNING id`,
-        [name, templateType, fileName, storageKey, placeholders, dbUser.id]
+        [name, templateType, fileName, storageKey, JSON.stringify(placeholders), dbUser.id]
       );
       const id = result.rows[0].id;
       await client.query("DELETE FROM field_mappings WHERE template_id = $1 AND NOT (placeholder = ANY($2::text[]))", [

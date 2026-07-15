@@ -60,7 +60,7 @@ export async function POST(request: Request) {
           workbook.rows.length - invalidRows.length,
           invalidRows.length,
           invalidRows.length ? "review" : "imported",
-          invalidRows
+          JSON.stringify(invalidRows)
         ]
       );
 

@@ -151,3 +151,16 @@ test("app settings migration enforces known bounded settings", async () => {
   assert.match(sql, /\(value #>> '\{\}'\)::int BETWEEN 5 AND 1440/);
   assert.match(sql, /\(value #>> '\{\}'\) = 'libreoffice'/);
 });
+
+test("JSONB array migration repairs and constrains operational array fields", async () => {
+  const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+  const sql = await readFile("db/migrations/015_jsonb_array_integrity.sql", "utf8");
+
+  assert.match(packageJson.scripts["db:migrate"], /015_jsonb_array_integrity\.sql/);
+  assert.match(sql, /UPDATE imports[\s\S]*jsonb_typeof\(errors\) <> 'array'/);
+  assert.match(sql, /UPDATE applicants[\s\S]*jsonb_typeof\(validation_errors\) <> 'array'/);
+  assert.match(sql, /UPDATE templates[\s\S]*jsonb_typeof\(placeholders\) <> 'array'/);
+  assert.match(sql, /imports_errors_array_chk/);
+  assert.match(sql, /applicants_validation_errors_array_chk/);
+  assert.match(sql, /templates_placeholders_array_chk/);
+});

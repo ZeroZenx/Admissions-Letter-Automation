@@ -1,0 +1,84 @@
+[
+  {
+    "name": "Acknowledgement",
+    "templateType": "ACKNOWLEDGEMENT",
+    "fileName": "ACKNOWLEDGEMENT_Template.docx",
+    "mappings": {
+      "FirstName": "FirstName",
+      "PROGRAMME_DESCRIPTION": "Program",
+      "StudentID": "StudentID"
+    }
+  },
+  {
+    "name": "Programme Admission Letter",
+    "templateType": "DFTEMPLATE",
+    "fileName": "Admission_Letter_Template_PA_AllFields.docx",
+    "mappings": {
+      "AdmissionStatus": "AdmissionStatus",
+      "FirstName": "FirstName",
+      "LastName": "LastName",
+      "LetterDate": "Today",
+      "Programme": "Program",
+      "StudentID": "StudentID",
+      "Term": "Term"
+    }
+  },
+  {
+    "name": "Conditional Fulfilled No Gate",
+    "templateType": "CFULFILLED_NOGATE",
+    "fileName": "CFULFILLED_NOGATE_Template.docx",
+    "mappings": {
+      "Address1": "Address1",
+      "Address2": "Address2",
+      "Address3": "Address3",
+      "Campus": "Campus",
+      "City": "City",
+      "Degree": "Degree",
+      "FirstName": "FirstName",
+      "LastName": "LastName",
+      "Major": "Major",
+      "Status": "Status",
+      "StudentID": "StudentID"
+    }
+  },
+  {
+    "name": "Conditional Offer CSEC Part Time",
+    "templateType": "CONDOFFER_CSEC_PT",
+    "fileName": "CONDOFFER_CSEC_PT_Template.docx",
+    "mappings": {
+      "Campus": "Campus",
+      "Degree": "Degree",
+      "FirstName": "FirstName",
+      "Major": "Major",
+      "Status": "Status",
+      "StudentID": "StudentID"
+    }
+  },
+  {
+    "name": "Conditional Offer Nursing",
+    "templateType": "CONDOFFER_NURSING",
+    "fileName": "CONDOFFER_NURSING_Template.docx",
+    "mappings": {
+      "Campus": "Campus",
+      "Degree": "Degree",
+      "FirstName": "FirstName",
+      "ID": "StudentID",
+      "Major": "Major",
+      "Status": "Status",
+      "StudentID": "StudentID"
+    }
+  },
+  {
+    "name": "Unconditional Offer",
+    "templateType": "UOFFER",
+    "fileName": "UOFFER_Template.docx",
+    "mappings": {
+      "Campus": "Campus",
+      "Degree": "Degree",
+      "FirstName": "FirstName",
+      "Major": "Major",
+      "Status": "Status",
+      "StudentID": "StudentID"
+    }
+  }
+]
