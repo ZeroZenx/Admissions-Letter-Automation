@@ -38,7 +38,7 @@ test("workspace UI exposes bounded pagination controls for list pages", async ()
   assert.match(source, /applyPageQuery\(query, pages\.applicants\)/);
   assert.match(source, /authenticatedFetch\(`\/api\/generated-letters\?\$\{pageQuery\(pages\.generatedLetters\)\}`\)/);
   assert.match(source, /authenticatedFetch\(`\/api\/email-logs\?\$\{pageQuery\(pages\.emailLogs\)\}`\)/);
-  assert.match(source, /authenticatedFetch\(`\/api\/imports\?\$\{pageQuery\(pages\.imports\)\}`\)/);
+  assert.match(source, /authenticatedFetch\(`\/api\/imports\?\$\{pageQuery\(pages\.imports\)\}&archived=\$\{showArchivedImports\}`\)/);
   assert.match(source, /mergePage\(current, "applicants", body\.page\)/);
   assert.match(source, /function PaginationControls/);
   assert.match(source, /<PaginationControls page=\{page\} loadedCount=\{applicants\.length\} onPage=\{onPage\} \/>/);

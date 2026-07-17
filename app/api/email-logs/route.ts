@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       status: url.searchParams.get("status") || undefined
     });
 
-    const where: string[] = [];
+    const where: string[] = ["EXISTS (SELECT 1 FROM imports i WHERE i.id = a.import_id AND i.archived_at IS NULL)"];
     const params: unknown[] = [];
     const ownership = counselorApplicantWhereClause(user, dbUser.id, params.length + 1);
     if (ownership.clause) {
@@ -49,6 +49,7 @@ export async function GET(request: Request) {
     const result = await query(
       `SELECT el.id, el.generated_letter_id, el.applicant_id, el.recipient, el.subject,
               el.status, el.sent_at, el.resend_reason, el.error_message, el.created_at,
+              el.provider, el.sender_address,
               a.student_id, a.first_name, a.last_name, a.template_type
          FROM email_logs el
          JOIN applicants a ON a.id = el.applicant_id

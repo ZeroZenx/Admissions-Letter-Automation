@@ -54,13 +54,24 @@ DATABASE_URL=postgres://postgres:YOUR_PASSWORD@localhost:5432/costaatt_admission
 APP_BASE_URL=https://admissions.example.edu
 APP_STORAGE_DIR=C:/COSTAATT/AdmissionsLetterStorage
 SOFFICE_PATH=C:/Program Files/LibreOffice/program/soffice.exe
+APP_ENCRYPTION_KEY=PASTE_A_GENERATED_KEY_HERE
 AUTH_MODE=development
 NEXT_PUBLIC_AUTH_MODE=development
 ALLOW_INSECURE_DEVELOPMENT_AUTH=true
 NEXT_PUBLIC_ENTRA_REDIRECT_URI=https://admissions.example.edu
 ```
 
+Generate the encryption key once in PowerShell, then paste the output into `.env.local`:
+
+```powershell
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+Keep this key stable, restricted to the service account, and out of Git and tickets. It protects any shared sender password saved in Settings.
+
 For production Entra sign-in, change `AUTH_MODE` and `NEXT_PUBLIC_AUTH_MODE` to `entra`, then set all `ENTRA_*` and `NEXT_PUBLIC_ENTRA_*` values listed in `.env.example`.
+
+After sign-in, an Admin can choose the email sender in Settings. Microsoft 365 counselor mode uses delegated Graph `Mail.Send`. Shared email mode uses SMTP with an encrypted password; for Microsoft 365, the tenant must permit authenticated SMTP for that mailbox. Prefer Graph when COSTAATT policy disables password-based SMTP.
 Remove `ALLOW_INSECURE_DEVELOPMENT_AUTH=true` (or set it to `false`) before exposing the app to staff. Production-mode development authentication fails closed unless this isolated-testing override is explicitly enabled.
 In production, use the HTTPS hostname that staff will open, not `localhost`. In Microsoft Entra, register both the app origin, such as `https://admissions.example.edu`, and the `/login` URL, such as `https://admissions.example.edu/login`, as single-page application redirect URIs. Keep `APP_BASE_URL` and `NEXT_PUBLIC_ENTRA_REDIRECT_URI` set to that same public origin.
 
@@ -154,5 +165,7 @@ http://localhost:6001
 - Pending email stuck: check Settings stale pending send timeout, then retry after the system marks the stale send failed.
 - Excel upload rejected: export Banner as `.xlsx`; legacy `.xls` files are not accepted.
 - PDF conversion fails: confirm `SOFFICE_PATH` points to `soffice.exe` and `/api/health` reports the PDF check as healthy.
+- Shared sender cannot save or decrypt its password: confirm the Windows service has the same valid `APP_ENCRYPTION_KEY` used when the password was stored.
+- SMTP connection test fails: confirm the host, port, TLS mode, mailbox credentials, firewall egress, and tenant SMTP AUTH policy.
 - Storage check fails: confirm `APP_STORAGE_DIR` exists and the service account has write permission.
 - Database check fails: confirm `DATABASE_URL`, PostgreSQL service status, firewall rules, and credentials.

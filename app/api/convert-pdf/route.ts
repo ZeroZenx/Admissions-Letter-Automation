@@ -39,7 +39,8 @@ export async function POST(request: Request) {
       `SELECT gl.applicant_id, gl.docx_storage_key, a.counselor_user_id, a.student_id, a.template_type
          FROM generated_letters gl
          JOIN applicants a ON a.id = gl.applicant_id
-        WHERE gl.id = $1`,
+        WHERE gl.id = $1
+          AND EXISTS (SELECT 1 FROM imports i WHERE i.id = a.import_id AND i.archived_at IS NULL)`,
       [body.generatedLetterId]
     );
     const letter = result.rows[0];

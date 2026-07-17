@@ -10,7 +10,8 @@ Use this checklist before enabling COSTAATT staff access.
 - LibreOffice is installed and `SOFFICE_PATH` points to the headless executable, or a replacement converter is implemented behind `lib/pdf-converter.ts`.
 - Windows VM deployments follow [windows-vm-deployment.md](windows-vm-deployment.md), including Windows storage paths, LibreOffice `soffice.exe`, and service account permissions.
 - `/api/health` returns `ok: true`, confirms database access and database schema readiness, confirms generated-file storage is writable, and confirms the PDF converter executable responds.
-- `/api/health` includes a passing `clientAuth` check with `Mail.Send` in the reported Graph scopes.
+- `/api/health` includes a passing `emailSender` check. Graph mode also requires `Mail.Send` in the reported scopes; SMTP mode requires decryptable stored credentials.
+- `APP_ENCRYPTION_KEY` is a stable base64-encoded 32-byte key stored only in the VM/service secret configuration.
 - Container deployments run the application as a non-root user and report healthy through the `/api/health` Docker healthcheck.
 
 ## Microsoft Entra
@@ -20,7 +21,7 @@ Use this checklist before enabling COSTAATT staff access.
 - API scope is exposed, for example `api://<client-id>/access_as_user`.
 - App roles exist: `Admin`, `Admissions Supervisor`, `Counselor`, `Viewer`.
 - Users or groups are assigned to roles.
-- Delegated Microsoft Graph permissions include `User.Read` and `Mail.Send`.
+- Delegated Microsoft Graph permissions include `User.Read` and, when Graph sending is selected, `Mail.Send`.
 - Admin consent is granted.
 
 ## Application Configuration
@@ -90,14 +91,15 @@ Use this checklist before enabling COSTAATT staff access.
 - Confirm imported `EmailStatus` values are limited to supported statuses, `Sent` rows include `SentDate`, and `Failed` rows include `ErrorMessage`.
 - Confirm the dashboard Import Review panel shows uploaded file, worksheet, status, valid/invalid row counts, uploader, and row-level errors.
 - Confirm imported applicant records show `EmailStatus`, `SentDate`, `WordFileName`, `PDFFileName`, `ErrorMessage`, `ProcessedByFlow`, and `TemplateType`.
-- Confirm one-click upload runs full automation for valid rows: import, DOCX/PDF generation, Microsoft Graph email send, and applicant status updates.
+- Confirm one-click upload runs full automation for valid rows: import, DOCX/PDF generation, selected-provider email send, and applicant status updates.
 - Confirm upload automation is blocked with a clear preflight message when a required `TemplateType` is missing, inactive, or has unmapped placeholders.
 - Confirm one-click upload is blocked with a clear preflight message when valid rows exceed the applicant batch limit.
 - Confirm manual selected-letter generation is blocked with a clear message when selected rows exceed the applicant batch limit.
 - Confirm missing stored template files block generation with a clear re-upload message and applicant `ErrorMessage`.
 - Confirm generation failures write applicant `ErrorMessage` values and failed generated-letter statuses.
 - Confirm missing generated DOCX files block PDF conversion with a clear regenerate message and failed generated-letter status.
-- Confirm the upload send option uses the authenticated Microsoft Graph mailbox, updates email status/sent dates, and records row-level errors.
+- Confirm the upload send option uses the sender selected in Settings, updates email status/sent dates, and records provider, sender address, and row-level errors.
+- Archive a controlled import and confirm it disappears from active records, letters, email history, and exports; restore it; then archive and permanently clear only the controlled batch as an Admin.
 - Confirm email attempts move applicant status through queued/sending/sent or failed without marking Graph-accepted mail as failed because of later audit issues.
 - Confirm missing generated PDF files block email sending with a clear applicant `ErrorMessage` and audit entry.
 - Confirm stale pending email sends older than the configured timeout are marked failed, audited, and reflected on the applicant row before retry.

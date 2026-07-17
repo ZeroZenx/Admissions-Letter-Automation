@@ -1,6 +1,6 @@
 # COSTAATT Admissions Letter Automation
 
-Internal Next.js application for importing Banner admissions exports, managing Word templates, generating applicant DOCX/PDF letters, and sending admissions letters through Microsoft Graph.
+Internal Next.js application for importing Banner admissions exports, managing Word templates, generating applicant DOCX/PDF letters, and sending admissions letters through Microsoft Graph or a configured shared SMTP mailbox.
 
 ## MVP Included
 
@@ -17,7 +17,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Generate completed DOCX files while preserving the original DOCX package formatting.
 - Convert generated DOCX files to PDF through LibreOffice/`soffice` when available.
 - Optionally generate DOCX/PDF files automatically for valid rows immediately after upload.
-- One-click upload runs full automation for valid rows: import, generate DOCX/PDF files, send generated PDFs through Microsoft Graph, and update operational status fields.
+- One-click upload runs full automation for valid rows: import, generate DOCX/PDF files, send generated PDFs through the selected email provider, and update operational status fields.
 - Upload automation preflights required `TemplateType` templates and exact placeholder mappings before generating or sending.
 - One-click upload blocks oversized generation/email batches before calling automation.
 - Manual selected-letter generation uses the same applicant batch limit before calling automation.
@@ -27,6 +27,8 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Microsoft Entra bearer-token verification for production API access.
 - Role-guarded API routes for Admin, Admissions Supervisor, Counselor, and Viewer access.
 - Microsoft Graph `/me/sendMail` route that sends from the authenticated counselor mailbox.
+- Admin-managed shared SMTP sender option with AES-256-GCM encrypted password storage and a connection test.
+- Archive, restore, and Admin-only permanent clearing of completed import batches and their stored files.
 - Recent email activity view with recipient, status, resend reason, sent time, and errors.
 - Duplicate-send prevention unless a resend reason is supplied.
 
@@ -51,6 +53,8 @@ cp .env.example .env.local
 ```
 
 For local development, keep `AUTH_MODE=development`. Production deployments should use `AUTH_MODE=entra` and set `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_API_AUDIENCE`, and the matching `NEXT_PUBLIC_ENTRA_*` values.
+
+Generate `APP_ENCRYPTION_KEY` once on the deployment machine before configuring a shared SMTP password. Keep the key stable and out of Git; losing or changing it makes the stored password unreadable.
 
 Production builds reject development authentication unless `ALLOW_INSECURE_DEVELOPMENT_AUTH=true` is deliberately set for an isolated test environment. Never use that override on a staff-accessible deployment.
 
@@ -109,7 +113,7 @@ After deployment, verify runtime dependencies:
 curl /api/health
 ```
 
-The health check reports server authentication, browser Entra/Graph scope readiness, database connectivity and schema readiness, storage configuration, and PDF conversion configuration without exposing secrets.
+The health check reports server authentication, selected email-sender readiness, browser Entra/Graph scope readiness, database connectivity and schema readiness, storage configuration, and PDF conversion configuration without exposing secrets.
 
 ## Microsoft Entra Setup
 
@@ -119,10 +123,10 @@ For production:
 2. Add the deployed site URL and `/login` URL as single-page application redirect URIs.
 3. Expose an API scope such as `api://<client-id>/access_as_user`.
 4. Assign app roles named `Admin`, `Admissions Supervisor`, `Counselor`, and `Viewer`.
-5. Grant delegated Microsoft Graph permissions for `User.Read` and `Mail.Send`.
+5. Grant delegated Microsoft Graph permissions for `User.Read` and `Mail.Send` when using the signed-in counselor sender. `Mail.Send` is not required for the shared SMTP option.
 6. Set `AUTH_MODE=entra`, `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_API_AUDIENCE`, `NEXT_PUBLIC_ENTRA_TENANT_ID`, `NEXT_PUBLIC_ENTRA_CLIENT_ID`, `NEXT_PUBLIC_ENTRA_API_SCOPE`, and `NEXT_PUBLIC_GRAPH_SCOPES`.
 
-The browser acquires one access token for this app's API and a separate delegated Graph token for email sending. The server validates the API token and uses the Graph token only for `/me/sendMail`.
+When Graph sending is selected, the browser acquires one access token for this app's API and a separate delegated Graph token for `/me/sendMail`. For shared SMTP, an Admin enters the sender address, server, username, and password in Settings; the password is encrypted before it is stored and is never returned to the browser.
 
 ## Production Checklist
 
@@ -140,7 +144,8 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Email send history is visible in the Email Queue without exposing stored email bodies.
 - Raw storage paths are never returned from download APIs; files are fetched by generated-letter id.
 - ZIP downloads reject missing generated-letter IDs instead of returning partial archives.
-- Production Graph email sending requires a delegated Microsoft Graph bearer token with `Mail.Send`.
+- Production Graph email sending requires a delegated Microsoft Graph bearer token with `Mail.Send`; shared SMTP requires a valid `APP_ENCRYPTION_KEY` and mailbox credentials.
+- Archived import batches are hidden from active records, generated letters, email history, exports, and processing until restored. Permanent clear is Admin-only and requires prior archival.
 - Upload, email attachment, bulk generation, and ZIP download size limits are enforced server-side.
 - Dashboard list APIs enforce bounded `limit` and `offset` pagination.
 - Applicant status exports are row-limited server-side and require filters when the match set is too large.

@@ -3,8 +3,9 @@ import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
 import { NextResponse } from "next/server";
-import { getAuthEnv, getClientAuthEnv, getDbEnv, getPdfEnv, getStorageEnv } from "@/lib/env";
+import { getAuthEnv, getClientAuthEnv, getDbEnv, getEncryptionEnv, getPdfEnv, getStorageEnv } from "@/lib/env";
 import { query } from "@/lib/db";
+import { getAppSettings, getStoredSmtpConfiguration } from "@/lib/settings";
 import { storagePath } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -22,6 +23,23 @@ export async function GET() {
     };
   } catch (error) {
     checks.auth = { ok: false, detail: errorMessage(error) };
+  }
+
+  try {
+    const settings = await getAppSettings();
+    if (settings.email.provider === "smtp") {
+      getEncryptionEnv();
+      await getStoredSmtpConfiguration();
+      checks.emailSender = { ok: true, detail: `provider=smtp; sender=${settings.email.senderEmail}` };
+    } else {
+      const clientAuth = getClientAuthEnv();
+      if (clientAuth.NEXT_PUBLIC_AUTH_MODE === "entra" && !clientAuth.graphScopes.includes("Mail.Send")) {
+        throw new Error("Microsoft Graph sender requires Mail.Send in NEXT_PUBLIC_GRAPH_SCOPES.");
+      }
+      checks.emailSender = { ok: true, detail: "provider=graph" };
+    }
+  } catch (error) {
+    checks.emailSender = { ok: false, detail: errorMessage(error) };
   }
 
   try {
@@ -83,7 +101,7 @@ async function verifyStorageWritable() {
 }
 
 async function verifyDatabaseSchema() {
-  const expectedTables = ["users", "imports", "applicants", "templates", "field_mappings", "generated_letters", "email_logs", "audit_logs", "app_settings"];
+  const expectedTables = ["users", "imports", "applicants", "templates", "field_mappings", "generated_letters", "email_logs", "audit_logs", "app_settings", "email_sender_settings"];
   const tableResult = await query<{ table_name: string }>(
     `SELECT table_name
        FROM information_schema.tables
@@ -106,7 +124,9 @@ async function verifyDatabaseSchema() {
     ["applicants", "template_type"],
     ["generated_letters", "pdf_storage_key"],
     ["email_logs", "resend_reason"],
-    ["audit_logs", "applicant_student_id"]
+    ["audit_logs", "applicant_student_id"],
+    ["imports", "archived_at"],
+    ["email_logs", "provider"]
   ];
   const columnResult = await query<{ table_name: string; column_name: string }>(
     `SELECT table_name, column_name

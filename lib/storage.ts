@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { getStorageEnv } from "@/lib/env";
 
@@ -49,6 +49,20 @@ export async function storageFileExists(key: string) {
   } catch {
     return false;
   }
+}
+
+export async function deleteStorageFile(key: string) {
+  try {
+    await unlink(storagePath(key));
+    return true;
+  } catch (error) {
+    if (isMissingFileError(error)) return false;
+    throw error;
+  }
+}
+
+function isMissingFileError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
 function normalizeStorageKey(key: string) {

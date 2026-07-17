@@ -31,7 +31,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       `SELECT gl.${column}, a.counselor_user_id, a.student_id, a.template_type
          FROM generated_letters gl
          JOIN applicants a ON a.id = gl.applicant_id
-        WHERE gl.id = $1`,
+        WHERE gl.id = $1
+          AND EXISTS (SELECT 1 FROM imports i WHERE i.id = a.import_id AND i.archived_at IS NULL)`,
       [id]
     );
     if (result.rows[0]) enforceApplicantOwnership(user, dbUser.id, result.rows[0]);

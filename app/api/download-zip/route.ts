@@ -36,7 +36,8 @@ export async function POST(request: Request) {
       `SELECT gl.id, gl.pdf_storage_key, gl.docx_storage_key, a.counselor_user_id, a.student_id, a.template_type
          FROM generated_letters gl
          JOIN applicants a ON a.id = gl.applicant_id
-        WHERE gl.id = ANY($1::uuid[])`,
+        WHERE gl.id = ANY($1::uuid[])
+          AND EXISTS (SELECT 1 FROM imports i WHERE i.id = a.import_id AND i.archived_at IS NULL)`,
       [body.generatedLetterIds]
     );
     const requestedIds = new Set(body.generatedLetterIds);

@@ -23,7 +23,8 @@ export async function GET(request: Request) {
               a.word_file_name, a.pdf_file_name
          FROM generated_letters gl
          JOIN applicants a ON a.id = gl.applicant_id
-         ${ownership.clause ? `WHERE ${ownership.clause}` : ""}
+         WHERE EXISTS (SELECT 1 FROM imports i WHERE i.id = a.import_id AND i.archived_at IS NULL)
+         ${ownership.clause ? `AND ${ownership.clause}` : ""}
          ORDER BY gl.generated_at DESC
          LIMIT $${ownership.params.length + 1} OFFSET $${ownership.params.length + 2}`,
       [...ownership.params, page.limit, page.offset]

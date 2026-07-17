@@ -9,7 +9,8 @@ import { sendGraphMail } from "@/lib/graph-mail";
 import { handleApiError } from "@/lib/http";
 import { uploadLimits, formatBytes } from "@/lib/request-limits";
 import { sanitizeEmailHtml } from "@/lib/sanitize";
-import { getAppSettings } from "@/lib/settings";
+import { getAppSettings, getStoredSmtpConfiguration } from "@/lib/settings";
+import { sendSmtpMail } from "@/lib/smtp-mail";
 import { readStorageBuffer, storageFileExists } from "@/lib/storage";
 import { enforceApplicantOwnership, ensureDbUser } from "@/lib/user-context";
 
@@ -27,8 +28,9 @@ export async function POST(request: Request) {
     const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
     const dbUser = await ensureDbUser(user);
     const authEnv = getAuthEnv();
+    const settings = await getAppSettings();
     const graphAccessToken = request.headers.get("x-graph-access-token") ?? user.accessToken;
-    if (authEnv.AUTH_MODE !== "development" && !graphAccessToken) {
+    if (settings.email.provider === "graph" && authEnv.AUTH_MODE !== "development" && !graphAccessToken) {
       throw new HttpError(401, "Microsoft Graph email sending requires a delegated Graph bearer token.");
     }
 
@@ -46,7 +48,8 @@ export async function POST(request: Request) {
       `SELECT gl.applicant_id, gl.pdf_storage_key, a.student_id, a.template_type, a.email, a.first_name, a.last_name, a.counselor_user_id
          FROM generated_letters gl
          JOIN applicants a ON a.id = gl.applicant_id
-        WHERE gl.id = $1`,
+        WHERE gl.id = $1
+          AND EXISTS (SELECT 1 FROM imports i WHERE i.id = a.import_id AND i.archived_at IS NULL)`,
       [body.generatedLetterId]
     );
     const letter = letterResult.rows[0];
@@ -67,7 +70,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
 
-    const settings = await getAppSettings();
     const stalePendingMessage = "Pending email send timed out before completion.";
     const stalePendingResult = await query<{ id: string }>(
       `UPDATE email_logs
@@ -141,10 +143,10 @@ export async function POST(request: Request) {
     }
     const sanitizedBody = sanitizeEmailHtml(body.body);
     const emailLog = await query<{ id: string }>(
-      `INSERT INTO email_logs (applicant_id, generated_letter_id, recipient, subject, body, status, sent_at, resend_reason, sent_by)
-       VALUES ($1, $2, $3, $4, $5, 'pending', null, $6, $7)
+      `INSERT INTO email_logs (applicant_id, generated_letter_id, recipient, subject, body, status, sent_at, resend_reason, sent_by, provider, sender_address)
+       VALUES ($1, $2, $3, $4, $5, 'pending', null, $6, $7, $8, $9)
        RETURNING id`,
-      [letter.applicant_id, body.generatedLetterId, letter.email, body.subject, sanitizedBody, body.resendReason ?? null, dbUser.id]
+      [letter.applicant_id, body.generatedLetterId, letter.email, body.subject, sanitizedBody, body.resendReason ?? null, dbUser.id, settings.email.provider, settings.email.provider === "smtp" ? settings.email.senderEmail : user.email]
     );
 
     await query("UPDATE applicants SET email_status = 'Queued', sent_date = null, error_message = null WHERE id = $1", [letter.applicant_id]);
@@ -165,19 +167,23 @@ export async function POST(request: Request) {
     try {
       await query("UPDATE applicants SET email_status = 'Sending', sent_date = null, error_message = null WHERE id = $1", [letter.applicant_id]);
       if (authEnv.AUTH_MODE !== "development") {
-        if (!graphAccessToken) throw new HttpError(401, "Microsoft Graph email sending requires a delegated Graph bearer token.");
-        await sendGraphMail({
-          accessToken: graphAccessToken,
+        const mail = {
           recipient: letter.email,
           subject: body.subject,
           body: sanitizedBody,
           attachmentName: letterDownloadFileName(letter.student_id, letter.template_type, "pdf"),
           attachmentContent: pdf
-        });
+        };
+        if (settings.email.provider === "smtp") {
+          await sendSmtpMail(await getStoredSmtpConfiguration(), mail);
+        } else {
+          if (!graphAccessToken) throw new HttpError(401, "Microsoft Graph email sending requires a delegated Graph bearer token.");
+          await sendGraphMail({ accessToken: graphAccessToken, ...mail });
+        }
       }
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown Graph send failure";
+      const errorMessage = error instanceof Error ? error.message : "Unknown email send failure";
       await query("UPDATE email_logs SET status = 'failed', error_message = $1 WHERE id = $2", [errorMessage, emailLog.rows[0].id]);
       await query("UPDATE applicants SET email_status = 'Failed', error_message = $1 WHERE id = $2", [errorMessage, letter.applicant_id]);
       await audit("email.failed", "email_logs", {
@@ -200,7 +206,9 @@ export async function POST(request: Request) {
       studentId: letter.student_id,
       recipient: letter.email,
       generatedLetterId: body.generatedLetterId,
-      resend: Boolean(body.resendReason)
+      resend: Boolean(body.resendReason),
+      provider: settings.email.provider,
+      senderAddress: settings.email.provider === "smtp" ? settings.email.senderEmail : user.email
     }, emailLog.rows[0].id, dbUser.id).catch(() => {
       auditLogged = false;
     });

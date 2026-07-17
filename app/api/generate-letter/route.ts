@@ -22,7 +22,8 @@ const applicantSelect = `
          email_status, sent_date, word_file_name, pdf_file_name, error_message,
          processed_by_flow, template_type, raw_data, validation_errors
     FROM applicants
-   WHERE id = $1`;
+   WHERE id = $1
+     AND EXISTS (SELECT 1 FROM imports i WHERE i.id = applicants.import_id AND i.archived_at IS NULL)`;
 
 type ApplicantGenerationRow = {
   id: string;

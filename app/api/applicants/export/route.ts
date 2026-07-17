@@ -18,6 +18,7 @@ export async function GET(request: Request) {
     const params: unknown[] = [];
     const filters = readApplicantFilters(url);
 
+    clauses.push("EXISTS (SELECT 1 FROM imports i WHERE i.id = applicants.import_id AND i.archived_at IS NULL)");
     clauses.push(...applicantFilterClauses(filters, params));
     const ownership = counselorApplicantWhereClause(user, dbUser.id, params.length + 1);
     if (ownership.clause) {

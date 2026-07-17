@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     if (sizeError) return sizeError;
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    await saveBuffer("imports", fileName, buffer);
+    const importStorageKey = await saveBuffer("imports", fileName, buffer);
     const workbook = await readAdmissionsWorksheet(buffer);
     const uploadedByCounselorId = user.roles.includes("Counselor") ? dbUser.id : undefined;
     const duplicateKeys = findDuplicateApplicantKeys(workbook.rows);
@@ -50,8 +50,8 @@ export async function POST(request: Request) {
 
     const importRecord = await withTransaction(async (client) => {
       const importResult = await client.query<{ id: string }>(
-        `INSERT INTO imports (uploaded_file_name, worksheet_name, total_rows, valid_rows, invalid_rows, status, errors)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO imports (uploaded_file_name, worksheet_name, total_rows, valid_rows, invalid_rows, status, errors, storage_key)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id`,
         [
           fileName,
@@ -60,7 +60,8 @@ export async function POST(request: Request) {
           workbook.rows.length - invalidRows.length,
           invalidRows.length,
           invalidRows.length ? "review" : "imported",
-          JSON.stringify(invalidRows)
+          JSON.stringify(invalidRows),
+          importStorageKey
         ]
       );
 

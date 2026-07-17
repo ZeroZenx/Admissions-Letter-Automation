@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Archive,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -13,8 +14,10 @@ import {
   LayoutDashboard,
   Mail,
   Map,
+  RotateCcw,
   Settings,
   ShieldCheck,
+  Trash2,
   Upload
 } from "lucide-react";
 import { mappableLetterFields } from "@/lib/banner-fields";
@@ -96,6 +99,7 @@ type ImportRecord = {
   errors: unknown;
   imported_by_name: string | null;
   imported_by_email: string | null;
+  archived_at: string | null;
 };
 
 type TemplatePreflight = {
@@ -124,6 +128,8 @@ type EmailLog = {
   first_name: string;
   last_name: string;
   template_type: string;
+  provider: "graph" | "smtp" | null;
+  sender_address: string | null;
 };
 
 type AppSettings = {
@@ -131,6 +137,13 @@ type AppSettings = {
     defaultSubject: string;
     defaultBody: string;
     stalePendingMinutes: number;
+    provider: "graph" | "smtp";
+    senderEmail: string;
+    smtpHost: string;
+    smtpPort: number;
+    smtpSecure: boolean;
+    smtpUsername: string;
+    passwordConfigured: boolean;
   };
   pdf: {
     converter: "libreoffice";
@@ -178,7 +191,14 @@ const fallbackSettings: AppSettings = {
   email: {
     defaultSubject: "Your COSTAATT admissions letter",
     defaultBody: "Dear applicant,<br><br>Please find your COSTAATT admissions letter attached.",
-    stalePendingMinutes: 30
+    stalePendingMinutes: 30,
+    provider: "graph",
+    senderEmail: "",
+    smtpHost: "smtp.office365.com",
+    smtpPort: 587,
+    smtpSecure: false,
+    smtpUsername: "",
+    passwordConfigured: false
   },
   pdf: {
     converter: "libreoffice"
@@ -197,6 +217,7 @@ export function AppClient() {
   const [pages, setPages] = useState(initialPages);
   const [settings, setSettings] = useState<AppSettings>(fallbackSettings);
   const [selectedApplicants, setSelectedApplicants] = useState<string[]>([]);
+  const [showArchivedImports, setShowArchivedImports] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [filters, setFilters] = useState({
@@ -230,7 +251,7 @@ export function AppClient() {
         authenticatedFetch("/api/templates"),
         authenticatedFetch(`/api/generated-letters?${pageQuery(pages.generatedLetters)}`),
         authenticatedFetch(`/api/email-logs?${pageQuery(pages.emailLogs)}`),
-        authenticatedFetch(`/api/imports?${pageQuery(pages.imports)}`),
+        authenticatedFetch(`/api/imports?${pageQuery(pages.imports)}&archived=${showArchivedImports}`),
         canManageWorkspace ? authenticatedFetch(`/api/audit-logs?${pageQuery(pages.auditLogs)}`) : Promise.resolve(null)
       ]);
       const failed = [applicantRes, templateRes, generatedRes, emailLogRes, importRes, auditRes].find((response) => response && !response.ok);
@@ -267,7 +288,7 @@ export function AppClient() {
     } catch (error) {
       setMessage(`Dashboard refresh failed: ${clientErrorMessage(error)}`);
     }
-  }, [auth.status, canManageWorkspace, filters, pages.applicants, pages.auditLogs, pages.emailLogs, pages.generatedLetters, pages.imports]);
+  }, [auth.status, canManageWorkspace, filters, pages.applicants, pages.auditLogs, pages.emailLogs, pages.generatedLetters, pages.imports, showArchivedImports]);
 
   const refreshSettings = useCallback(async () => {
     if (auth.status !== "authenticated") return;
@@ -361,7 +382,7 @@ export function AppClient() {
         importedMessage = `${importedMessage} Automation preflight blocked: ${validApplicantIds.length} valid rows exceed the ${uploadLimits.bulkApplicantIds} applicant batch limit. Filter or split the Banner export before running generation/email.`;
       } else if ((autoGenerate || autoSend) && validApplicantIds.length) {
         try {
-          const bulkFetch = autoSend ? authenticatedGraphFetch : authenticatedFetch;
+          const bulkFetch = autoSend && settings.email.provider === "graph" ? authenticatedGraphFetch : authenticatedFetch;
           const generationResponse = await bulkFetch("/api/generate-bulk", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -475,6 +496,36 @@ export function AppClient() {
     } catch (error) {
       setMessage(`Generation failed: ${clientErrorMessage(error)}`);
       await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function updateImportArchive(record: ImportRecord, archived: boolean) {
+    if (archived && !window.confirm(`Archive ${record.uploaded_file_name}? Its records will be hidden from active work.`)) return;
+    setBusy(true);
+    try {
+      const response = await authenticatedFetch(`/api/imports/${record.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived })
+      });
+      const body = await readJson<{ error?: string }>(response);
+      setMessage(response.ok ? `Import batch ${archived ? "archived" : "restored"}.` : body.error ?? "Import batch could not be updated.");
+      if (response.ok) await refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clearImport(record: ImportRecord) {
+    if (!window.confirm(`Permanently clear ${record.uploaded_file_name} and all of its generated letters and email history? This cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      const response = await authenticatedFetch(`/api/imports/${record.id}`, { method: "DELETE" });
+      const body = await readJson<{ error?: string; cleanupFailures?: number }>(response);
+      setMessage(response.ok ? `Import batch permanently cleared.${body.cleanupFailures ? ` ${body.cleanupFailures} stored files could not be removed.` : ""}` : body.error ?? "Import batch could not be cleared.");
+      if (response.ok) await refresh();
     } finally {
       setBusy(false);
     }
@@ -616,6 +667,11 @@ export function AppClient() {
               imports={imports}
               importsPage={pages.imports}
               onImportsPage={(page) => updatePage("imports", page)}
+              showArchivedImports={showArchivedImports}
+              onShowArchivedImports={setShowArchivedImports}
+              onArchiveImport={updateImportArchive}
+              onClearImport={clearImport}
+              canClearImports={userRoles.includes("Admin")}
             />
           )}
           {canUseWorkspace && canOperateLetters && active === "upload" && <UploadPage busy={busy} onUpload={uploadImport} />}
@@ -763,7 +819,12 @@ function Dashboard({
   templates,
   imports,
   importsPage,
-  onImportsPage
+  onImportsPage,
+  showArchivedImports,
+  onShowArchivedImports,
+  onArchiveImport,
+  onClearImport,
+  canClearImports
 }: {
   metrics: Record<string, number>;
   applicants: Applicant[];
@@ -771,6 +832,11 @@ function Dashboard({
   imports: ImportRecord[];
   importsPage: PageState;
   onImportsPage: (page: PageState) => void;
+  showArchivedImports: boolean;
+  onShowArchivedImports: (value: boolean) => void;
+  onArchiveImport: (record: ImportRecord, archived: boolean) => void;
+  onClearImport: (record: ImportRecord) => void;
+  canClearImports: boolean;
 }) {
   return (
     <div className="grid">
@@ -796,14 +862,14 @@ function Dashboard({
           ))}
         </Panel>
       </div>
-      <ImportHistory imports={imports} page={importsPage} onPage={onImportsPage} />
+      <ImportHistory imports={imports} page={importsPage} onPage={onImportsPage} showArchived={showArchivedImports} onShowArchived={onShowArchivedImports} onArchive={onArchiveImport} onClear={onClearImport} canClear={canClearImports} />
     </div>
   );
 }
 
-function ImportHistory({ imports, page, onPage }: { imports: ImportRecord[]; page: PageState; onPage: (page: PageState) => void }) {
+function ImportHistory({ imports, page, onPage, showArchived, onShowArchived, onArchive, onClear, canClear }: { imports: ImportRecord[]; page: PageState; onPage: (page: PageState) => void; showArchived: boolean; onShowArchived: (value: boolean) => void; onArchive: (record: ImportRecord, archived: boolean) => void; onClear: (record: ImportRecord) => void; canClear: boolean }) {
   return (
-    <Panel title="Import Review">
+    <Panel title="Import Review" action={<label className="toggle-label"><input type="checkbox" checked={showArchived} onChange={(event) => onShowArchived(event.target.checked)} /> Show archived</label>}>
       <div className="table-wrap">
         <table>
           <thead>
@@ -814,6 +880,7 @@ function ImportHistory({ imports, page, onPage }: { imports: ImportRecord[]; pag
               <th>Rows</th>
               <th>Imported By</th>
               <th>Errors</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -833,6 +900,14 @@ function ImportHistory({ imports, page, onPage }: { imports: ImportRecord[]; pag
                 </td>
                 <td>{record.imported_by_name ?? record.imported_by_email ?? ""}</td>
                 <td>{formatImportErrors(record.errors)}</td>
+                <td>
+                  <div className="row-actions">
+                    <button className="icon-button" title={showArchived ? "Restore import batch" : "Archive import batch"} onClick={() => onArchive(record, !showArchived)}>
+                      {showArchived ? <RotateCcw size={16} /> : <Archive size={16} />}
+                    </button>
+                    {showArchived && canClear ? <button className="icon-button danger" title="Permanently clear import batch" onClick={() => onClear(record)}><Trash2 size={16} /></button> : null}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1141,7 +1216,8 @@ function EmailQueue({
     setBusy(true);
     setMessage("");
     try {
-      const response = await authenticatedGraphFetch("/api/send-email", {
+      const emailFetch = settings.email.provider === "graph" ? authenticatedGraphFetch : authenticatedFetch;
+      const response = await emailFetch("/api/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1165,7 +1241,11 @@ function EmailQueue({
     <div className="grid">
       {canSend ? (
         <Panel title="Email Queue">
-          <p className="notice">Email uses Microsoft Graph and sends from the authenticated counselor mailbox.</p>
+          <p className="notice">
+            {settings.email.provider === "smtp"
+              ? `Email sends from the shared mailbox ${settings.email.senderEmail}.`
+              : "Email uses Microsoft Graph and sends from the authenticated counselor mailbox."}
+          </p>
           {message ? <p className="notice">{message}</p> : null}
           <div className="grid two">
             <div className="field">
@@ -1225,6 +1305,7 @@ function EmailLogTable({ emailLogs, page, onPage }: { emailLogs: EmailLog[]; pag
               <th>Time</th>
               <th>StudentID</th>
               <th>Recipient</th>
+              <th>Sender</th>
               <th>Template</th>
               <th>Status</th>
               <th>Resend</th>
@@ -1237,6 +1318,7 @@ function EmailLogTable({ emailLogs, page, onPage }: { emailLogs: EmailLog[]; pag
                 <td>{new Date(log.sent_at ?? log.created_at).toLocaleString()}</td>
                 <td>{log.student_id}</td>
                 <td>{log.recipient}</td>
+                <td>{log.sender_address ?? "Authenticated counselor"}</td>
                 <td>{log.template_type}</td>
                 <td>
                   <span className={log.status === "sent" ? "status ok" : "status"}>{log.status}</span>
@@ -1302,9 +1384,13 @@ function SettingsPage({
   const [draft, setDraft] = useState(settings);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [password, setPassword] = useState("");
+  const [clearPassword, setClearPassword] = useState(false);
 
   useEffect(() => {
     setDraft(settings);
+    setPassword("");
+    setClearPassword(false);
   }, [settings]);
 
   async function saveSettings() {
@@ -1314,11 +1400,16 @@ function SettingsPage({
       const response = await authenticatedFetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft)
+        body: JSON.stringify({
+          ...draft,
+          email: { ...draft.email, password: password || undefined, clearPassword }
+        })
       });
       const body = await readJson<{ settings?: AppSettings; error?: string }>(response);
       if (response.ok && body.settings) {
         onSettings(body.settings);
+        setPassword("");
+        setClearPassword(false);
         setMessage("Settings saved.");
         await onRefresh();
       } else {
@@ -1326,6 +1417,20 @@ function SettingsPage({
       }
     } catch (error) {
       setMessage(`Settings could not be saved: ${clientErrorMessage(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function testSmtp() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await authenticatedFetch("/api/settings/test-email", { method: "POST" });
+      const body = await readJson<{ verified?: boolean; error?: string }>(response);
+      setMessage(response.ok && body.verified ? "SMTP connection and credentials verified." : body.error ?? "SMTP verification failed.");
+    } catch (error) {
+      setMessage(`SMTP verification failed: ${clientErrorMessage(error)}`);
     } finally {
       setBusy(false);
     }
@@ -1346,6 +1451,13 @@ function SettingsPage({
       </div>
       <div className="grid two" style={{ marginTop: 18 }}>
         <div className="field">
+          <label>Email sending method</label>
+          <select value={draft.email.provider} onChange={(event) => setDraft({ ...draft, email: { ...draft.email, provider: event.target.value as "graph" | "smtp" } })}>
+            <option value="graph">Microsoft 365 signed-in counselor</option>
+            <option value="smtp">Shared email address and password</option>
+          </select>
+        </div>
+        <div className="field">
           <label>Default email subject</label>
           <input
             value={draft.email.defaultSubject}
@@ -1354,6 +1466,34 @@ function SettingsPage({
             }
           />
         </div>
+        {draft.email.provider === "smtp" ? (
+          <>
+            <div className="field">
+              <label>Sender email address</label>
+              <input type="email" value={draft.email.senderEmail} onChange={(event) => setDraft({ ...draft, email: { ...draft.email, senderEmail: event.target.value } })} placeholder="admissions@costaatt.edu.tt" />
+            </div>
+            <div className="field">
+              <label>SMTP server</label>
+              <input value={draft.email.smtpHost} onChange={(event) => setDraft({ ...draft, email: { ...draft.email, smtpHost: event.target.value } })} placeholder="smtp.office365.com" />
+            </div>
+            <div className="field">
+              <label>SMTP port</label>
+              <input type="number" min={1} max={65535} value={draft.email.smtpPort} onChange={(event) => setDraft({ ...draft, email: { ...draft.email, smtpPort: Number(event.target.value) } })} />
+            </div>
+            <div className="field">
+              <label>SMTP username</label>
+              <input value={draft.email.smtpUsername} onChange={(event) => setDraft({ ...draft, email: { ...draft.email, smtpUsername: event.target.value } })} autoComplete="username" />
+            </div>
+            <div className="field">
+              <label>Password {draft.email.passwordConfigured ? "(configured)" : ""}</label>
+              <input type="password" value={password} onChange={(event) => { setPassword(event.target.value); setClearPassword(false); }} autoComplete="new-password" placeholder={draft.email.passwordConfigured ? "Leave blank to keep current password" : "Enter sender password"} />
+            </div>
+            <label className="toggle-label">
+              <input type="checkbox" checked={draft.email.smtpSecure} onChange={(event) => setDraft({ ...draft, email: { ...draft.email, smtpSecure: event.target.checked } })} /> Use direct TLS (normally port 465)
+            </label>
+            {draft.email.passwordConfigured ? <label className="toggle-label"><input type="checkbox" checked={clearPassword} onChange={(event) => { setClearPassword(event.target.checked); if (event.target.checked) setPassword(""); }} /> Remove stored password</label> : null}
+          </>
+        ) : null}
         <div className="field">
           <label>PDF converter</label>
           <select
@@ -1384,9 +1524,10 @@ function SettingsPage({
           />
         </div>
       </div>
-      <button className="button" disabled={busy} onClick={saveSettings}>
-        Save Settings
-      </button>
+      <div className="row-actions">
+        <button className="button" disabled={busy} onClick={saveSettings}>Save Settings</button>
+        {draft.email.provider === "smtp" && draft.email.passwordConfigured ? <button className="button secondary" disabled={busy} onClick={testSmtp}>Test SMTP Connection</button> : null}
+      </div>
     </Panel>
   );
 }
@@ -1638,11 +1779,12 @@ function PaginationControls({
   );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
   return (
     <section className="panel">
       <div className="panel-header">
         <h3>{title}</h3>
+        {action}
       </div>
       <div className="panel-body">{children}</div>
     </section>

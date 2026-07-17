@@ -267,9 +267,9 @@ test("operator docs describe one-click source-of-truth automation", async () => 
   const checklist = await readFile("docs/production-readiness.md", "utf8");
 
   assert.match(readme, /One-click upload runs full automation/);
-  assert.match(readme, /import, generate DOCX\/PDF files, send generated PDFs through Microsoft Graph/);
+  assert.match(readme, /import, generate DOCX\/PDF files, send generated PDFs through the selected email provider/);
   assert.match(checklist, /Confirm one-click upload runs full automation/);
-  assert.match(checklist, /Microsoft Graph email send/);
+  assert.match(checklist, /selected-provider email send/);
 });
 
 test("upload automation failures release busy state and report an error", async () => {

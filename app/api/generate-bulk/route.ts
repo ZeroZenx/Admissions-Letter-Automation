@@ -6,6 +6,7 @@ import { query } from "@/lib/db";
 import { getAuthEnv } from "@/lib/env";
 import { handleApiError } from "@/lib/http";
 import { uploadLimits } from "@/lib/request-limits";
+import { getAppSettings } from "@/lib/settings";
 import { counselorApplicantWhereClause, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
     const authorization = request.headers.get("authorization");
     const devRole = request.headers.get("x-dev-role");
     const graphAccessToken = request.headers.get("x-graph-access-token");
+    const settings = body.sendEmail ? await getAppSettings() : null;
     const results = [];
 
     if (body.sendEmail && (!body.subject || !body.body)) {
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
     if (hasDuplicateApplicantIds(body.applicantIds)) {
       return NextResponse.json({ error: "Bulk automation applicantIds must be unique." }, { status: 400 });
     }
-    if (body.sendEmail && authEnv.AUTH_MODE !== "development" && !graphAccessToken) {
+    if (body.sendEmail && settings?.email.provider === "graph" && authEnv.AUTH_MODE !== "development" && !graphAccessToken) {
       return NextResponse.json({ error: "Microsoft Graph token is required when sendEmail is true." }, { status: 401 });
     }
     const preflight = await buildBulkAutomationPreflight(body.applicantIds, user, dbUser.id);
@@ -184,6 +186,7 @@ async function buildBulkAutomationPreflight(applicantIds: string[], user: Awaite
     `SELECT template_type, validation_errors
        FROM applicants
       WHERE id = ANY($1::uuid[])
+        AND EXISTS (SELECT 1 FROM imports i WHERE i.id = applicants.import_id AND i.archived_at IS NULL)
         ${ownership.clause ? `AND ${ownership.clause}` : ""}`,
     [applicantIds, ...ownership.params]
   );

@@ -20,6 +20,10 @@ const pdfEnvSchema = z.object({
   SOFFICE_PATH: z.string().optional()
 });
 
+const encryptionEnvSchema = z.object({
+  APP_ENCRYPTION_KEY: z.string().min(1, "APP_ENCRYPTION_KEY is required for stored SMTP passwords")
+});
+
 const clientAuthEnvSchema = z.object({
   NEXT_PUBLIC_AUTH_MODE: z.enum(["development", "entra"]).default(process.env.NODE_ENV === "production" ? "entra" : "development"),
   NEXT_PUBLIC_ENTRA_TENANT_ID: z.string().optional(),
@@ -52,6 +56,10 @@ export function getPdfEnv() {
   return pdfEnvSchema.parse(process.env);
 }
 
+export function getEncryptionEnv() {
+  return encryptionEnvSchema.parse(process.env);
+}
+
 export function getClientAuthEnv() {
   const env = clientAuthEnvSchema.parse(process.env);
   assertSafeDevelopmentAuth(env.NEXT_PUBLIC_AUTH_MODE, process.env.ALLOW_INSECURE_DEVELOPMENT_AUTH);
@@ -61,8 +69,7 @@ export function getClientAuthEnv() {
       env.NEXT_PUBLIC_ENTRA_TENANT_ID ? "" : "NEXT_PUBLIC_ENTRA_TENANT_ID",
       env.NEXT_PUBLIC_ENTRA_CLIENT_ID ? "" : "NEXT_PUBLIC_ENTRA_CLIENT_ID",
       env.NEXT_PUBLIC_ENTRA_REDIRECT_URI ? "" : "NEXT_PUBLIC_ENTRA_REDIRECT_URI",
-      env.NEXT_PUBLIC_ENTRA_API_SCOPE ? "" : "NEXT_PUBLIC_ENTRA_API_SCOPE",
-      graphScopes.includes("Mail.Send") ? "" : "Mail.Send graph scope"
+      env.NEXT_PUBLIC_ENTRA_API_SCOPE ? "" : "NEXT_PUBLIC_ENTRA_API_SCOPE"
     ].filter(Boolean);
     if (missing.length) throw new Error(`Client Entra configuration is incomplete: ${missing.join(", ")}.`);
   }
