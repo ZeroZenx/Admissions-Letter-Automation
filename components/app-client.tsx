@@ -217,6 +217,7 @@ export function AppClient() {
   const [pages, setPages] = useState(initialPages);
   const [settings, setSettings] = useState<AppSettings>(fallbackSettings);
   const [selectedApplicants, setSelectedApplicants] = useState<string[]>([]);
+  const [selectedGeneratedLetters, setSelectedGeneratedLetters] = useState<string[]>([]);
   const [showArchivedImports, setShowArchivedImports] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -487,10 +488,22 @@ export function AppClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ applicantIds: selectedApplicants })
       });
-      const body = await readJson<{ results?: Array<{ ok: boolean }>; error?: string }>(response);
+      const body = await readJson<{
+        results?: Array<{ ok: boolean; generated?: boolean; result?: { generatedLetterId?: string } }>;
+        error?: string;
+      }>(response);
       const failures = body.results?.filter((result: { ok: boolean }) => !result.ok).length ?? 0;
+      const generatedLetterIds = body.results
+        ?.map((result) => result.result?.generatedLetterId)
+        .filter((id): id is string => Boolean(id)) ?? [];
+      if (response.ok && generatedLetterIds.length) {
+        setSelectedGeneratedLetters(generatedLetterIds);
+        setActive("email");
+      }
       setMessage(
-        response.ok ? `Generation finished for ${selectedApplicants.length} applicants. ${failures} failed.` : body.error ?? "Generation failed."
+        response.ok
+          ? `Generated ${generatedLetterIds.length} letter${generatedLetterIds.length === 1 ? "" : "s"}. They are selected in Email Queue. ${failures} failed.`
+          : body.error ?? "Generation failed."
       );
       await refresh();
     } catch (error) {
@@ -722,6 +735,8 @@ export function AppClient() {
               settings={settings}
               onRefresh={refresh}
               canSend={canOperateLetters}
+              selected={selectedGeneratedLetters}
+              onSelected={setSelectedGeneratedLetters}
             />
           )}
           {canUseWorkspace && canManageWorkspace && active === "audit" && (
@@ -1181,7 +1196,9 @@ function EmailQueue({
   onDownloadZip,
   settings,
   onRefresh,
-  canSend
+  canSend,
+  selected,
+  onSelected
 }: {
   generatedLetters: GeneratedLetter[];
   emailLogs: EmailLog[];
@@ -1195,8 +1212,9 @@ function EmailQueue({
   settings: AppSettings;
   onRefresh: () => Promise<void>;
   canSend: boolean;
+  selected: string[];
+  onSelected: (ids: string[]) => void;
 }) {
-  const [generatedLetterId, setGeneratedLetterId] = useState(generatedLetters[0]?.id ?? "");
   const [subject, setSubject] = useState(settings.email.defaultSubject);
   const [body, setBody] = useState(settings.email.defaultBody);
   const [resendReason, setResendReason] = useState("");
@@ -1208,30 +1226,44 @@ function EmailQueue({
     setBody(settings.email.defaultBody);
   }, [settings.email.defaultBody, settings.email.defaultSubject]);
 
-  useEffect(() => {
-    if (!generatedLetterId && generatedLetters[0]?.id) setGeneratedLetterId(generatedLetters[0].id);
-  }, [generatedLetterId, generatedLetters]);
-
-  async function sendEmail() {
+  async function sendEmails() {
+    if (selected.length > uploadLimits.bulkEmailGeneratedLetterIds) {
+      setMessage(`Select no more than ${uploadLimits.bulkEmailGeneratedLetterIds} generated letters in one email batch.`);
+      return;
+    }
     setBusy(true);
     setMessage("");
     try {
       const emailFetch = settings.email.provider === "graph" ? authenticatedGraphFetch : authenticatedFetch;
-      const response = await emailFetch("/api/send-email", {
+      const response = await emailFetch("/api/send-email/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          generatedLetterId,
+          generatedLetterIds: selected,
           subject,
           body,
           resendReason: resendReason || undefined
         })
       });
-      const result = await readJson<{ error?: string; sent?: boolean; warning?: string }>(response);
-      setMessage(response.ok && result.sent ? result.warning ?? "Email sent and logged." : result.error ?? "Email could not be sent.");
-      if (response.ok) await onRefresh();
+      const result = await readJson<{
+        error?: string;
+        sentCount?: number;
+        failedCount?: number;
+        warningCount?: number;
+        results?: Array<{ generatedLetterId: string; sent: boolean; warning?: string }>;
+      }>(response);
+      if (response.ok) {
+        const sentIds = result.results?.filter((item) => item.sent).map((item) => item.generatedLetterId) ?? [];
+        onSelected(selected.filter((id) => !sentIds.includes(id)));
+        setMessage(
+          `Batch complete: ${result.sentCount ?? 0} sent, ${result.failedCount ?? 0} failed.${result.warningCount ? ` ${result.warningCount} sent with an audit warning.` : ""}`
+        );
+        await onRefresh();
+      } else {
+        setMessage(result.error ?? "Email batch could not be sent.");
+      }
     } catch (error) {
-      setMessage(`Email could not be sent: ${clientErrorMessage(error)}`);
+      setMessage(`Email batch could not be sent: ${clientErrorMessage(error)}`);
     } finally {
       setBusy(false);
     }
@@ -1247,17 +1279,13 @@ function EmailQueue({
               : "Email uses Microsoft Graph and sends from the authenticated counselor mailbox."}
           </p>
           {message ? <p className="notice">{message}</p> : null}
+          <SelectionSummary
+            selectedCount={selected.length}
+            visibleSelectedCount={generatedLetters.filter((letter) => selected.includes(letter.id)).length}
+            visibleCount={generatedLetters.filter((letter) => letter.pdf_ready).length}
+            onClear={() => onSelected([])}
+          />
           <div className="grid two">
-            <div className="field">
-              <label>Generated letter</label>
-              <select value={generatedLetterId} onChange={(event) => setGeneratedLetterId(event.target.value)}>
-                {generatedLetters.map((letter) => (
-                  <option key={letter.id} value={letter.id}>
-                    {letter.student_id} · {letter.first_name} {letter.last_name} · {letter.template_type}
-                  </option>
-                ))}
-              </select>
-            </div>
             <div className="field">
               <label>Subject</label>
               <input value={subject} onChange={(event) => setSubject(event.target.value)} />
@@ -1276,12 +1304,11 @@ function EmailQueue({
               />
             </div>
           </div>
-          <button className="button" disabled={busy || !generatedLetterId} onClick={sendEmail}>
-            <Mail size={16} /> Send Selected PDF
+          <button className="button" disabled={busy || selected.length === 0} onClick={sendEmails}>
+            <Mail size={16} /> Send {selected.length || ""} Selected Email{selected.length === 1 ? "" : "s"}
           </button>
         </Panel>
       ) : null}
-      <EmailLogTable emailLogs={emailLogs} page={emailLogsPage} onPage={onEmailLogsPage} />
       <GeneratedTable
         generatedLetters={generatedLetters}
         page={generatedPage}
@@ -1290,7 +1317,10 @@ function EmailQueue({
         onPreview={onPreview}
         onDownloadZip={onDownloadZip}
         canDownload={canSend}
+        selected={canSend ? selected : undefined}
+        onSelected={canSend ? onSelected : undefined}
       />
+      <EmailLogTable emailLogs={emailLogs} page={emailLogsPage} onPage={onEmailLogsPage} />
     </div>
   );
 }
@@ -1683,7 +1713,9 @@ function GeneratedTable({
   onDownload,
   onPreview,
   onDownloadZip,
-  canDownload
+  canDownload,
+  selected,
+  onSelected
 }: {
   generatedLetters: GeneratedLetter[];
   page: PageState;
@@ -1692,8 +1724,25 @@ function GeneratedTable({
   onPreview: (letterId: string) => void;
   onDownloadZip: (letterIds: string[]) => void;
   canDownload: boolean;
+  selected?: string[];
+  onSelected?: (ids: string[]) => void;
 }) {
   const downloadableIds = generatedLetters.map((letter) => letter.id);
+  const selectableIds = generatedLetters.filter((letter) => letter.pdf_ready).map((letter) => letter.id);
+  const canSelect = selected !== undefined && onSelected !== undefined;
+  const allVisibleSelected = canSelect && selectableIds.length > 0 && selectableIds.every((id) => selected.includes(id));
+
+  function toggleVisibleGenerated() {
+    if (!canSelect) return;
+    onSelected(allVisibleSelected
+      ? selected.filter((id) => !selectableIds.includes(id))
+      : [...selected, ...selectableIds.filter((id) => !selected.includes(id))]);
+  }
+
+  function toggleGenerated(id: string) {
+    if (!canSelect) return;
+    onSelected(selected.includes(id) ? selected.filter((item) => item !== id) : [...selected, id]);
+  }
 
   return (
     <Panel title="Generated Letters">
@@ -1706,6 +1755,16 @@ function GeneratedTable({
         <table>
           <thead>
             <tr>
+              {canSelect ? (
+                <th>
+                  <input
+                    type="checkbox"
+                    aria-label="Select all visible generated letters"
+                    checked={allVisibleSelected}
+                    onChange={toggleVisibleGenerated}
+                  />
+                </th>
+              ) : null}
               <th>StudentID</th>
               <th>Name</th>
               <th>TemplateType</th>
@@ -1718,6 +1777,17 @@ function GeneratedTable({
           <tbody>
             {generatedLetters.map((letter) => (
               <tr key={letter.id}>
+                {canSelect ? (
+                  <td>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select generated letter for ${letter.student_id}`}
+                      checked={selected.includes(letter.id)}
+                      disabled={!letter.pdf_ready}
+                      onChange={() => toggleGenerated(letter.id)}
+                    />
+                  </td>
+                ) : null}
                 <td>{letter.student_id}</td>
                 <td>
                   {letter.first_name} {letter.last_name}

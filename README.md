@@ -138,7 +138,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - A fresh deployment includes active mappings for `ACKNOWLEDGEMENT`, `DFTEMPLATE`, `CFULFILLED_NOGATE`, `CONDOFFER_CSEC_PT`, `CONDOFFER_NURSING`, and `UOFFER`.
 - Admissions staff can review source-truth email status, sent date, generated file names, error message, processing flag, and selected template per applicant.
 - Generation failures are written back to applicant error fields and generated-letter failure status.
-- Email sending can be run from the Email Queue or explicitly enabled on upload for a full import/generate/send batch.
+- Email sending can be run as a multi-select batch from the Email Queue or automatically on upload for a full import/generate/send batch. Manually generated letters are carried into the Email Queue selection.
 - Duplicate sends are blocked unless an authorized user supplies a resend reason.
 - Pending email sends older than the configured stale-send timeout are marked failed before staff can retry.
 - Email send history is visible in the Email Queue without exposing stored email bodies.

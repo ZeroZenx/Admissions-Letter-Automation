@@ -305,12 +305,36 @@ test("workspace actions release busy state when requests throw", async () => {
   assert.match(source, /Template status could not be updated: \$\{clientErrorMessage\(error\)\}/);
   assert.match(source, /Could not save field mappings: \$\{clientErrorMessage\(error\)\}/);
   assert.match(source, /Generation failed: \$\{clientErrorMessage\(error\)\}/);
-  assert.match(source, /Email could not be sent: \$\{clientErrorMessage\(error\)\}/);
+  assert.match(source, /Email batch could not be sent: \$\{clientErrorMessage\(error\)\}/);
   assert.match(source, /Settings could not be saved: \$\{clientErrorMessage\(error\)\}/);
   assert.match(source, /finally \{\n\s+setBusy\(false\);\n\s+\}\n\s+\}\n\n\s+async function updateTemplateStatus/);
   assert.match(source, /finally \{\n\s+setBusy\(false\);\n\s+\}\n\s+\}\n\n\s+async function saveMappings/);
   assert.match(source, /finally \{\n\s+setBusy\(false\);\n\s+\}\n\s+\}\n\n\s+async function generateSelected/);
   assert.match(source, /finally \{\n\s+setBusy\(false\);\n\s+\}\n\s+\}\n\n\s+return \(/);
+});
+
+test("email queue sends selected generated PDFs as a bounded batch", async () => {
+  const routeSource = await readFile("app/api/send-email/bulk/route.ts", "utf8");
+  const clientSource = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(routeSource, /generatedLetterIds: z\.array\(z\.string\(\)\.uuid\(\)\)\.min\(1\)\.max\(uploadLimits\.bulkEmailGeneratedLetterIds\)/);
+  assert.match(routeSource, /new Set\(input\.generatedLetterIds\)\.size !== input\.generatedLetterIds\.length/);
+  assert.match(routeSource, /requireAuth\(request, \["Admin", "Admissions Supervisor", "Counselor"\]\)/);
+  assert.match(routeSource, /settings\.email\.provider === "graph"/);
+  assert.match(routeSource, /for \(const generatedLetterId of input\.generatedLetterIds\)/);
+  assert.match(routeSource, /fetch\(`\$\{origin\}\/api\/send-email`/);
+  assert.match(routeSource, /email\.batch_completed/);
+  assert.match(routeSource, /sentCount/);
+  assert.match(routeSource, /failedCount/);
+
+  assert.match(clientSource, /setSelectedGeneratedLetters\(generatedLetterIds\)/);
+  assert.match(clientSource, /setActive\("email"\)/);
+  assert.match(clientSource, /authenticatedGraphFetch : authenticatedFetch/);
+  assert.match(clientSource, /"\/api\/send-email\/bulk"/);
+  assert.match(clientSource, /Send \{selected\.length \|\| ""\} Selected Email/);
+  assert.match(clientSource, /aria-label="Select all visible generated letters"/);
+  assert.match(clientSource, /disabled=\{!letter\.pdf_ready\}/);
+  assert.match(clientSource, /onSelected\(selected\.filter\(\(id\) => !sentIds\.includes\(id\)\)\)/);
 });
 
 test("bulk generation can send generated PDFs and persist row-level failures", async () => {
@@ -504,7 +528,8 @@ test("email queue surfaces sent-with-warning responses", async () => {
   const source = await readFile("components/app-client.tsx", "utf8");
 
   assert.match(source, /warning\?: string/);
-  assert.match(source, /result\.warning \?\? "Email sent and logged\."/);
+  assert.match(source, /warningCount\?: number/);
+  assert.match(source, /sent with an audit warning/);
 });
 
 test("email send route clears stale applicant status details while queued or sending", async () => {

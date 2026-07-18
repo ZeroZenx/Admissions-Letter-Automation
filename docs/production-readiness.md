@@ -56,6 +56,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Dashboard list APIs enforce bounded `limit` and `offset` pagination.
 - Email HTML is sanitized before sending and logging.
 - Email Queue exposes recent send history, status, resend reasons, and errors without returning stored email bodies.
+- Email Queue supports selecting up to 200 generated PDFs and sending them as one operator-initiated batch with per-student results.
 - Default email subject and body are only exposed to letter operators and settings managers.
 - Audit log details are sanitized before being returned to the browser.
 - Audit log details redact recipient email addresses before being returned to the browser.
@@ -112,6 +113,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Send a test email from a counselor account to a controlled test mailbox.
 - Confirm duplicate-send prevention blocks a second send without a resend reason.
 - Confirm the Email Queue recent activity table records sent, failed, and resent attempts for the correct counselor scope.
+- Confirm manually generated letters are selected in Email Queue and a multi-letter send records individual Sent or Failed results without stopping the remaining batch.
 
 ## Release Gate
 
