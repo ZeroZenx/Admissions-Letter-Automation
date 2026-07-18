@@ -89,6 +89,8 @@ npm run db:setup
 
 The command installs and activates all six supplied Word templates with their field mappings. It is safe to re-run after an update and will preserve administrator-uploaded replacements.
 
+After setup, an Admin or Admissions Supervisor can maintain the default email subject and body for each template under Template Management. Admissions staff choose one template type at a time in the Email Queue; its saved wording loads automatically and remains editable before the manual batch send.
+
 7. Validate the app:
 
 ```powershell

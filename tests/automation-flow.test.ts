@@ -198,7 +198,7 @@ test("generated letters endpoint and table expose operational file names", async
 
   assert.match(routeSource, /a\.word_file_name, a\.pdf_file_name/);
   assert.match(routeSource, /readPaginationParams\(url, \{\n\s+defaultLimit: listLimits\.generatedLetters,\n\s+maxLimit: listLimits\.generatedLetters\n\s+\}\)/);
-  assert.match(routeSource, /LIMIT \$\$\{ownership\.params\.length \+ 1\} OFFSET \$\$\{ownership\.params\.length \+ 2\}/);
+  assert.match(routeSource, /LIMIT \$\$\{params\.length - 1\} OFFSET \$\$\{params\.length\}/);
   assert.match(routeSource, /return NextResponse\.json\(\{ generatedLetters: result\.rows, page \}\)/);
   assert.match(clientSource, /word_file_name: string \| null/);
   assert.match(clientSource, /pdf_file_name: string \| null/);
@@ -327,6 +327,9 @@ test("email queue sends selected generated PDFs as a bounded batch", async () =>
   assert.match(routeSource, /email\.batch_completed/);
   assert.match(routeSource, /sentCount/);
   assert.match(routeSource, /failedCount/);
+  assert.match(routeSource, /SELECT gl\.id, a\.template_type/);
+  assert.match(routeSource, /templateTypes\.length !== 1/);
+  assert.match(routeSource, /Select generated letters from one template type per email batch/);
 
   assert.match(clientSource, /const \[selectedGeneratedLetters, setSelectedGeneratedLetters\] = useState<string\[\]>\(\[\]\)/);
   assert.match(clientSource, /if \(generationResponse\.ok\) setSelectedGeneratedLetters\(\[\]\)/);
@@ -338,6 +341,21 @@ test("email queue sends selected generated PDFs as a bounded batch", async () =>
   assert.match(clientSource, /aria-label="Select all visible generated letters"/);
   assert.match(clientSource, /disabled=\{!letter\.pdf_ready\}/);
   assert.match(clientSource, /onSelected\(selected\.filter\(\(id\) => !sentIds\.includes\(id\)\)\)/);
+  assert.match(clientSource, /const \[emailTemplateType, setEmailTemplateType\] = useState\(""\)/);
+  assert.match(clientSource, /generatedQuery\.set\("templateType", emailTemplateType\)/);
+  assert.match(clientSource, /Choose a template type/);
+  assert.match(clientSource, /selectedTemplate\?\.email_subject/);
+  assert.match(clientSource, /selectedTemplate\?\.email_body/);
+  assert.match(clientSource, /disabled=\{busy \|\| !templateType \|\| selected\.length === 0\}/);
+});
+
+test("generated letter pagination filters by normalized template type on the server", async () => {
+  const source = await readFile("app/api/generated-letters/route.ts", "utf8");
+
+  assert.match(source, /url\.searchParams\.get\("templateType"\)/);
+  assert.match(source, /parseTemplateType\(templateTypeInput\)/);
+  assert.match(source, /clauses\.push\(`a\.template_type = \$\$\{params\.length\}`\)/);
+  assert.match(source, /LIMIT \$\$\{params\.length - 1\} OFFSET \$\$\{params\.length\}/);
 });
 
 test("bulk generation is generation-only and cannot send email", async () => {

@@ -17,7 +17,7 @@ export const runtime = "nodejs";
 
 const schema = z.object({
   generatedLetterId: z.string().uuid(),
-  subject: z.string().trim().min(1).max(160),
+  subject: z.string().trim().min(1).max(160).refine((value) => !/[\u0000-\u001f\u007f]/.test(value), "Email subject cannot contain control characters."),
   body: z.string().trim().min(1).max(12000),
   resendReason: z.string().trim().max(1000).optional()
 });

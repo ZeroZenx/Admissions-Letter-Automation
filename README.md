@@ -139,6 +139,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - Admissions staff can review source-truth email status, sent date, generated file names, error message, processing flag, and selected template per applicant.
 - Generation failures are written back to applicant error fields and generated-letter failure status.
 - Email sending runs only as a deliberate multi-select batch from the Email Queue. Staff review generated PDFs first, then manually select all or a subset of recipients before sending.
+- Each template type stores its own approved email subject and body. The Email Queue filters generated letters by template type, loads that template's saved wording, and rejects mixed-template batches.
 - Duplicate sends are blocked unless an authorized user supplies a resend reason.
 - Pending email sends older than the configured stale-send timeout are marked failed before staff can retry.
 - Email send history is visible in the Email Queue without exposing stored email bodies.

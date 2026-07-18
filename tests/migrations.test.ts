@@ -164,3 +164,19 @@ test("JSONB array migration repairs and constrains operational array fields", as
   assert.match(sql, /applicants_validation_errors_array_chk/);
   assert.match(sql, /templates_placeholders_array_chk/);
 });
+
+test("template email content migration backfills and bounds per-template defaults", async () => {
+  const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+  const sql = await readFile("db/migrations/017_template_email_content.sql", "utf8");
+
+  assert.match(packageJson.scripts["db:migrate"], /017_template_email_content\.sql/);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS email_subject text/);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS email_body text/);
+  assert.match(sql, /WHERE key = 'email\.defaultSubject'/);
+  assert.match(sql, /WHERE key = 'email\.defaultBody'/);
+  assert.match(sql, /templates_email_subject_length_chk/);
+  assert.match(sql, /templates_email_body_length_chk/);
+  assert.match(sql, /templates_email_subject_control_chk/);
+  assert.match(sql, /BETWEEN 1 AND 160/);
+  assert.match(sql, /BETWEEN 1 AND 12000/);
+});

@@ -14,6 +14,21 @@ test("template route supports audited activation lifecycle updates", async () =>
   assert.match(source, /template\.status_updated/);
 });
 
+test("templates store audited email content for each template type", async () => {
+  const source = await readFile("app/api/templates/route.ts", "utf8");
+  const client = await readFile("components/app-client.tsx", "utf8");
+
+  assert.match(source, /t\.email_subject, t\.email_body/);
+  assert.match(source, /emailSubject: z\.string\(\)\.trim\(\)\.min\(1\)\.max\(160\)/);
+  assert.match(source, /emailBody: z\.string\(\)\.trim\(\)\.min\(1\)\.max\(12000\)/);
+  assert.match(source, /SET email_subject = \$1,[\s\S]*email_body = \$2/);
+  assert.match(source, /template\.email_content_updated/);
+  assert.match(client, /function saveTemplateEmailContent/);
+  assert.match(client, /Email Content by Template/);
+  assert.match(client, /name="emailSubject" required maxLength=\{160\}/);
+  assert.match(client, /name="emailBody" required maxLength=\{12000\}/);
+});
+
 test("template list only exposes mappings to template managers", async () => {
   const source = await readFile("app/api/templates/route.ts", "utf8");
   const checklist = await readFile("docs/production-readiness.md", "utf8");

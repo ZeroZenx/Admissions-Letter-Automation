@@ -3,15 +3,16 @@ import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { HttpError, requireAuth } from "@/lib/auth";
 import { handleApiError } from "@/lib/http";
+import { query } from "@/lib/db";
 import { uploadLimits } from "@/lib/request-limits";
 import { getAppSettings } from "@/lib/settings";
-import { ensureDbUser } from "@/lib/user-context";
+import { counselorApplicantWhereClause, ensureDbUser } from "@/lib/user-context";
 
 export const runtime = "nodejs";
 
 const schema = z.object({
   generatedLetterIds: z.array(z.string().uuid()).min(1).max(uploadLimits.bulkEmailGeneratedLetterIds),
-  subject: z.string().trim().min(1).max(160),
+  subject: z.string().trim().min(1).max(160).refine((value) => !/[\u0000-\u001f\u007f]/.test(value), "Email subject cannot contain control characters."),
   body: z.string().trim().min(1).max(12000),
   resendReason: z.string().trim().max(1000).optional()
 });
@@ -23,6 +24,24 @@ export async function POST(request: Request) {
     const input = schema.parse(await request.json());
     if (new Set(input.generatedLetterIds).size !== input.generatedLetterIds.length) {
       return NextResponse.json({ error: "Each generated letter can appear only once in an email batch." }, { status: 400 });
+    }
+
+    const ownership = counselorApplicantWhereClause(user, dbUser.id, 2);
+    const batchLetters = await query<{ id: string; template_type: string }>(
+      `SELECT gl.id, a.template_type
+         FROM generated_letters gl
+         JOIN applicants a ON a.id = gl.applicant_id
+        WHERE gl.id = ANY($1::uuid[])
+          AND EXISTS (SELECT 1 FROM imports i WHERE i.id = a.import_id AND i.archived_at IS NULL)
+          ${ownership.clause ? `AND ${ownership.clause}` : ""}`,
+      [input.generatedLetterIds, ...ownership.params]
+    );
+    if (batchLetters.rows.length !== input.generatedLetterIds.length) {
+      return NextResponse.json({ error: "One or more generated letters were not found or are not available to this user." }, { status: 404 });
+    }
+    const templateTypes = [...new Set(batchLetters.rows.map((letter) => letter.template_type))];
+    if (templateTypes.length !== 1) {
+      return NextResponse.json({ error: "Select generated letters from one template type per email batch." }, { status: 400 });
     }
 
     const settings = await getAppSettings();
@@ -76,6 +95,7 @@ export async function POST(request: Request) {
     const warningCount = results.filter((result) => result.sent && result.warning).length;
     await audit("email.batch_completed", "email_logs", {
       requestedCount: input.generatedLetterIds.length,
+      templateType: templateTypes[0],
       sentCount,
       failedCount,
       warningCount

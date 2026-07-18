@@ -18,7 +18,13 @@ export const runtime = "nodejs";
 const statusSchema = z.object({
   templateId: z.string().uuid(),
   isActive: z.boolean()
-});
+}).strict();
+const emailContentSchema = z.object({
+  templateId: z.string().uuid(),
+  emailSubject: z.string().trim().min(1).max(160).refine((value) => !/[\u0000-\u001f\u007f]/.test(value), "Email subject cannot contain control characters."),
+  emailBody: z.string().trim().min(1).max(12000)
+}).strict();
+const patchSchema = z.union([statusSchema, emailContentSchema]);
 const autoMappableFields = new Map(mappableLetterFields.map((field) => [autoMapKey(field), field]));
 
 export async function GET(request: Request) {
@@ -28,6 +34,7 @@ export async function GET(request: Request) {
     const result = canManageMappings
       ? await query(
           `SELECT t.id, t.name, t.template_type, t.original_file_name, t.placeholders, t.is_active, t.uploaded_at,
+                  t.email_subject, t.email_body,
                   COALESCE(json_agg(json_build_object('placeholder', fm.placeholder, 'bannerField', fm.banner_field, 'fallbackValue', fm.fallback_value) ORDER BY fm.placeholder)
                     FILTER (WHERE fm.id IS NOT NULL), '[]') AS mappings
              FROM templates t
@@ -37,6 +44,7 @@ export async function GET(request: Request) {
         )
       : await query(
           `SELECT t.id, t.name, t.template_type, t.original_file_name, t.placeholders, t.is_active, t.uploaded_at,
+                  t.email_subject, t.email_body,
                   '[]'::json AS mappings
              FROM templates t
              ORDER BY t.template_type`
@@ -132,7 +140,27 @@ export async function PATCH(request: Request) {
   try {
     const user = await requireAuth(request, ["Admin", "Admissions Supervisor"]);
     const dbUser = await ensureDbUser(user);
-    const body = statusSchema.parse(await request.json());
+    const body = patchSchema.parse(await request.json());
+
+    if ("emailSubject" in body) {
+      const result = await query<{ id: string; template_type: string; email_subject: string; email_body: string }>(
+        `UPDATE templates
+            SET email_subject = $1,
+                email_body = $2
+          WHERE id = $3
+          RETURNING id, template_type, email_subject, email_body`,
+        [body.emailSubject, body.emailBody, body.templateId]
+      );
+      const template = result.rows[0];
+      if (!template) return NextResponse.json({ error: "Template not found." }, { status: 404 });
+
+      await audit("template.email_content_updated", "templates", {
+        templateType: template.template_type,
+        subject: template.email_subject
+      }, template.id, dbUser.id);
+
+      return NextResponse.json({ template });
+    }
 
     const result = await query<{ id: string; template_type: string; is_active: boolean }>(
       `UPDATE templates

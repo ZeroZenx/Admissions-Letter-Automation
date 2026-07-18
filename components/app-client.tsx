@@ -58,6 +58,8 @@ type Template = {
   original_file_name: string;
   placeholders: Array<{ name: string; kind: string; occurrences: number }>;
   is_active: boolean;
+  email_subject: string;
+  email_body: string;
   mappings: Array<{ placeholder: string; bannerField: string; fallbackValue: string | null }>;
 };
 
@@ -218,6 +220,7 @@ export function AppClient() {
   const [settings, setSettings] = useState<AppSettings>(fallbackSettings);
   const [selectedApplicants, setSelectedApplicants] = useState<string[]>([]);
   const [selectedGeneratedLetters, setSelectedGeneratedLetters] = useState<string[]>([]);
+  const [emailTemplateType, setEmailTemplateType] = useState("");
   const [showArchivedImports, setShowArchivedImports] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -247,10 +250,12 @@ export function AppClient() {
     try {
       const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value));
       applyPageQuery(query, pages.applicants);
+      const generatedQuery = new URLSearchParams(pageQuery(pages.generatedLetters));
+      if (active === "email" && emailTemplateType) generatedQuery.set("templateType", emailTemplateType);
       const [applicantRes, templateRes, generatedRes, emailLogRes, importRes, auditRes] = await Promise.all([
         authenticatedFetch(`/api/applicants?${query.toString()}`),
         authenticatedFetch("/api/templates"),
-        authenticatedFetch(`/api/generated-letters?${pageQuery(pages.generatedLetters)}`),
+        authenticatedFetch(`/api/generated-letters?${generatedQuery.toString()}`),
         authenticatedFetch(`/api/email-logs?${pageQuery(pages.emailLogs)}`),
         authenticatedFetch(`/api/imports?${pageQuery(pages.imports)}&archived=${showArchivedImports}`),
         canManageWorkspace ? authenticatedFetch(`/api/audit-logs?${pageQuery(pages.auditLogs)}`) : Promise.resolve(null)
@@ -289,7 +294,7 @@ export function AppClient() {
     } catch (error) {
       setMessage(`Dashboard refresh failed: ${clientErrorMessage(error)}`);
     }
-  }, [auth.status, canManageWorkspace, filters, pages.applicants, pages.auditLogs, pages.emailLogs, pages.generatedLetters, pages.imports, showArchivedImports]);
+  }, [active, auth.status, canManageWorkspace, emailTemplateType, filters, pages.applicants, pages.auditLogs, pages.emailLogs, pages.generatedLetters, pages.imports, showArchivedImports]);
 
   const refreshSettings = useCallback(async () => {
     if (auth.status !== "authenticated") return;
@@ -440,6 +445,29 @@ export function AppClient() {
       await refresh();
     } catch (error) {
       setMessage(`Template status could not be updated: ${clientErrorMessage(error)}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveTemplateEmailContent(template: Template, formData: FormData) {
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await authenticatedFetch("/api/templates", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateId: template.id,
+          emailSubject: String(formData.get("emailSubject") || ""),
+          emailBody: String(formData.get("emailBody") || "")
+        })
+      });
+      const body = await readJson<{ error?: string }>(response);
+      setMessage(response.ok ? `${template.template_type} email content saved.` : body.error ?? "Template email content could not be saved.");
+      await refresh();
+    } catch (error) {
+      setMessage(`Template email content could not be saved: ${clientErrorMessage(error)}`);
     } finally {
       setBusy(false);
     }
@@ -693,7 +721,7 @@ export function AppClient() {
             />
           )}
           {canUseWorkspace && canManageWorkspace && active === "templates" && (
-            <TemplatesPage busy={busy} templates={templates} onUpload={uploadTemplate} onStatusChange={updateTemplateStatus} />
+            <TemplatesPage busy={busy} templates={templates} onUpload={uploadTemplate} onStatusChange={updateTemplateStatus} onEmailContentSave={saveTemplateEmailContent} />
           )}
           {canUseWorkspace && canManageWorkspace && active === "mappings" && <MappingsPage templates={templates} onSave={saveMappings} />}
           {canUseWorkspace && canOperateLetters && active === "generate" && (
@@ -724,6 +752,13 @@ export function AppClient() {
               onPreview={previewLetter}
               onDownloadZip={downloadZip}
               settings={settings}
+              templates={templates}
+              templateType={emailTemplateType}
+              onTemplateType={(templateType) => {
+                setEmailTemplateType(templateType);
+                setSelectedGeneratedLetters([]);
+                setPages((current) => ({ ...current, generatedLetters: { ...current.generatedLetters, offset: 0 } }));
+              }}
               onRefresh={refresh}
               canSend={canOperateLetters}
               selected={selectedGeneratedLetters}
@@ -998,16 +1033,19 @@ function TemplatesPage({
   busy,
   templates,
   onUpload,
-  onStatusChange
+  onStatusChange,
+  onEmailContentSave
 }: {
   busy: boolean;
   templates: Template[];
   onUpload: (formData: FormData) => void;
   onStatusChange: (template: Template, isActive: boolean) => void;
+  onEmailContentSave: (template: Template, formData: FormData) => void;
 }) {
   return (
-    <div className="grid two">
-      <Panel title="Upload Template">
+    <div className="grid">
+      <div className="grid two">
+        <Panel title="Upload Template">
         <form action={onUpload}>
           <div className="field">
             <label>Template name</label>
@@ -1025,8 +1063,8 @@ function TemplatesPage({
             <FileText size={16} /> Save Template
           </button>
         </form>
-      </Panel>
-      <Panel title="Managed Templates">
+        </Panel>
+        <Panel title="Managed Templates">
         {templates.map((template) => (
           <div key={template.id} style={{ marginBottom: 16 }}>
             <strong>{template.name}</strong>
@@ -1046,6 +1084,34 @@ function TemplatesPage({
             </button>
           </div>
         ))}
+        </Panel>
+      </div>
+      <Panel title="Email Content by Template">
+        <div className="template-email-list">
+          {templates.map((template) => (
+            <form
+              action={(formData) => onEmailContentSave(template, formData)}
+              className="template-email-editor"
+              key={`${template.id}:${template.email_subject}:${template.email_body}`}
+            >
+              <div className="template-email-heading">
+                <strong>{template.template_type}</strong>
+                <span className="muted">{template.name}</span>
+              </div>
+              <div className="field">
+                <label>Default subject</label>
+                <input name="emailSubject" required maxLength={160} defaultValue={template.email_subject} />
+              </div>
+              <div className="field">
+                <label>Default body</label>
+                <textarea name="emailBody" required maxLength={12000} rows={6} defaultValue={template.email_body} />
+              </div>
+              <button className="button secondary" disabled={busy}>
+                <Mail size={16} /> Save Email Content
+              </button>
+            </form>
+          ))}
+        </div>
       </Panel>
     </div>
   );
@@ -1185,6 +1251,9 @@ function EmailQueue({
   onPreview,
   onDownloadZip,
   settings,
+  templates,
+  templateType,
+  onTemplateType,
   onRefresh,
   canSend,
   selected,
@@ -1200,6 +1269,9 @@ function EmailQueue({
   onPreview: (letterId: string) => void;
   onDownloadZip: (letterIds: string[]) => void;
   settings: AppSettings;
+  templates: Template[];
+  templateType: string;
+  onTemplateType: (templateType: string) => void;
   onRefresh: () => Promise<void>;
   canSend: boolean;
   selected: string[];
@@ -1210,13 +1282,20 @@ function EmailQueue({
   const [resendReason, setResendReason] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const selectedTemplate = templates.find((template) => template.template_type === templateType);
+  const presetSubject = selectedTemplate?.email_subject ?? settings.email.defaultSubject;
+  const presetBody = selectedTemplate?.email_body ?? settings.email.defaultBody;
 
   useEffect(() => {
-    setSubject(settings.email.defaultSubject);
-    setBody(settings.email.defaultBody);
-  }, [settings.email.defaultBody, settings.email.defaultSubject]);
+    setSubject(presetSubject);
+    setBody(presetBody);
+  }, [presetBody, presetSubject]);
 
   async function sendEmails() {
+    if (!templateType) {
+      setMessage("Choose one template type before sending an email batch.");
+      return;
+    }
     if (selected.length > uploadLimits.bulkEmailGeneratedLetterIds) {
       setMessage(`Select no more than ${uploadLimits.bulkEmailGeneratedLetterIds} generated letters in one email batch.`);
       return;
@@ -1269,6 +1348,15 @@ function EmailQueue({
               : "Email uses Microsoft Graph and sends from the authenticated counselor mailbox."}
           </p>
           {message ? <p className="notice">{message}</p> : null}
+          <div className="field email-template-filter">
+            <label>Template type</label>
+            <select value={templateType} onChange={(event) => onTemplateType(event.target.value)}>
+              <option value="">Choose a template type</option>
+              {templates.map((template) => (
+                <option value={template.template_type} key={template.id}>{template.template_type} · {template.name}</option>
+              ))}
+            </select>
+          </div>
           <SelectionSummary
             selectedCount={selected.length}
             visibleSelectedCount={generatedLetters.filter((letter) => selected.includes(letter.id)).length}
@@ -1278,11 +1366,11 @@ function EmailQueue({
           <div className="grid two">
             <div className="field">
               <label>Subject</label>
-              <input value={subject} onChange={(event) => setSubject(event.target.value)} />
+              <input required maxLength={160} value={subject} onChange={(event) => setSubject(event.target.value)} />
             </div>
             <div className="field">
               <label>Body</label>
-              <textarea value={body} onChange={(event) => setBody(event.target.value)} rows={5} />
+              <textarea required maxLength={12000} value={body} onChange={(event) => setBody(event.target.value)} rows={5} />
             </div>
             <div className="field">
               <label>Resend reason</label>
@@ -1294,7 +1382,7 @@ function EmailQueue({
               />
             </div>
           </div>
-          <button className="button" disabled={busy || selected.length === 0} onClick={sendEmails}>
+          <button className="button" disabled={busy || !templateType || selected.length === 0} onClick={sendEmails}>
             <Mail size={16} /> Send {selected.length || ""} Selected Email{selected.length === 1 ? "" : "s"}
           </button>
         </Panel>
@@ -1478,7 +1566,7 @@ function SettingsPage({
           </select>
         </div>
         <div className="field">
-          <label>Default email subject</label>
+              <label>Fallback email subject</label>
           <input
             value={draft.email.defaultSubject}
             onChange={(event) =>
@@ -1535,7 +1623,7 @@ function SettingsPage({
           </select>
         </div>
         <div className="field">
-          <label>Default email body</label>
+              <label>Fallback email body</label>
           <textarea
             value={draft.email.defaultBody}
             onChange={(event) => setDraft({ ...draft, email: { ...draft.email, defaultBody: event.target.value } })}
