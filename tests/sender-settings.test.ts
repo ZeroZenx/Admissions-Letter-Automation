@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { createServer, type Socket } from "node:net";
 import test from "node:test";
 import { decryptSecret, encryptSecret } from "../lib/secret-crypto";
-import { sendSmtpMail } from "../lib/smtp-mail";
+import { sendSmtpMail, sendSmtpTestMail, smtpDiagnosticMessage } from "../lib/smtp-mail";
 
 test("stored sender passwords are authenticated-encrypted and round trip", () => {
   const previous = process.env.APP_ENCRYPTION_KEY;
@@ -74,6 +74,33 @@ test("SMTP sender authenticates and delivers a PDF attachment", async () => {
   } finally {
     await fixture.close();
   }
+});
+
+test("SMTP test sends a real message back to the configured sender", async () => {
+  const fixture = await startSmtpFixture("admissions@costaatt.edu.tt", "smtp-password");
+  try {
+    await sendSmtpTestMail({
+      host: "127.0.0.1",
+      port: fixture.port,
+      secure: false,
+      username: "admissions@costaatt.edu.tt",
+      password: "smtp-password",
+      senderEmail: "admissions@costaatt.edu.tt"
+    });
+
+    assert.equal(fixture.authenticated(), true);
+    assert.match(fixture.message(), /To: admissions@costaatt\.edu\.tt/i);
+    assert.match(fixture.message(), /COSTAATT Admissions Automation email test/i);
+  } finally {
+    await fixture.close();
+  }
+});
+
+test("SMTP authentication failures return actionable guidance without server details", () => {
+  const message = smtpDiagnosticMessage({ code: "EAUTH", responseCode: 535, response: "internal server detail" });
+  assert.match(message, /full email address/i);
+  assert.match(message, /SMTP AUTH/i);
+  assert.doesNotMatch(message, /internal server detail/i);
 });
 
 test("SMTP sender rejects invalid credentials without delivering a message", async () => {

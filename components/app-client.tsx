@@ -1427,10 +1427,10 @@ function SettingsPage({
     setMessage("");
     try {
       const response = await authenticatedFetch("/api/settings/test-email", { method: "POST" });
-      const body = await readJson<{ verified?: boolean; error?: string }>(response);
-      setMessage(response.ok && body.verified ? "SMTP connection and credentials verified." : body.error ?? "SMTP verification failed.");
+      const body = await readJson<{ sent?: boolean; recipient?: string; error?: string }>(response);
+      setMessage(response.ok && body.sent ? `Test email sent to ${body.recipient}.` : body.error ?? "Test email could not be sent.");
     } catch (error) {
-      setMessage(`SMTP verification failed: ${clientErrorMessage(error)}`);
+      setMessage(`Test email could not be sent: ${clientErrorMessage(error)}`);
     } finally {
       setBusy(false);
     }
@@ -1470,7 +1470,18 @@ function SettingsPage({
           <>
             <div className="field">
               <label>Sender email address</label>
-              <input type="email" value={draft.email.senderEmail} onChange={(event) => setDraft({ ...draft, email: { ...draft.email, senderEmail: event.target.value } })} placeholder="admissions@costaatt.edu.tt" />
+              <input
+                type="email"
+                value={draft.email.senderEmail}
+                onChange={(event) => {
+                  const senderEmail = event.target.value;
+                  const smtpUsername = !draft.email.smtpUsername || draft.email.smtpUsername === draft.email.senderEmail
+                    ? senderEmail
+                    : draft.email.smtpUsername;
+                  setDraft({ ...draft, email: { ...draft.email, senderEmail, smtpUsername } });
+                }}
+                placeholder="admissions@costaatt.edu.tt"
+              />
             </div>
             <div className="field">
               <label>SMTP server</label>
@@ -1481,8 +1492,8 @@ function SettingsPage({
               <input type="number" min={1} max={65535} value={draft.email.smtpPort} onChange={(event) => setDraft({ ...draft, email: { ...draft.email, smtpPort: Number(event.target.value) } })} />
             </div>
             <div className="field">
-              <label>SMTP username</label>
-              <input value={draft.email.smtpUsername} onChange={(event) => setDraft({ ...draft, email: { ...draft.email, smtpUsername: event.target.value } })} autoComplete="username" />
+              <label>SMTP sign-in email</label>
+              <input type="email" value={draft.email.smtpUsername} onChange={(event) => setDraft({ ...draft, email: { ...draft.email, smtpUsername: event.target.value } })} autoComplete="username" placeholder="admissions@costaatt.edu.tt" />
             </div>
             <div className="field">
               <label>Password {draft.email.passwordConfigured ? "(configured)" : ""}</label>
@@ -1526,7 +1537,7 @@ function SettingsPage({
       </div>
       <div className="row-actions">
         <button className="button" disabled={busy} onClick={saveSettings}>Save Settings</button>
-        {draft.email.provider === "smtp" && draft.email.passwordConfigured ? <button className="button secondary" disabled={busy} onClick={testSmtp}>Test SMTP Connection</button> : null}
+        {draft.email.provider === "smtp" && draft.email.passwordConfigured ? <button className="button secondary" disabled={busy} onClick={testSmtp}>Send Test Email</button> : null}
       </div>
     </Panel>
   );

@@ -166,6 +166,6 @@ http://localhost:6001
 - Excel upload rejected: export Banner as `.xlsx`; legacy `.xls` files are not accepted.
 - PDF conversion fails: confirm `SOFFICE_PATH` points to `soffice.exe` and `/api/health` reports the PDF check as healthy.
 - Shared sender cannot save or decrypt its password: confirm the Windows service has the same valid `APP_ENCRYPTION_KEY` used when the password was stored.
-- SMTP connection test fails: confirm the host, port, TLS mode, mailbox credentials, firewall egress, and tenant SMTP AUTH policy.
+- SMTP test email fails: use the mailbox's full email address as the SMTP sign-in email, then confirm the password, host, port, TLS mode, firewall egress, and tenant SMTP AUTH policy.
 - Storage check fails: confirm `APP_STORAGE_DIR` exists and the service account has write permission.
 - Database check fails: confirm `DATABASE_URL`, PostgreSQL service status, firewall rules, and credentials.

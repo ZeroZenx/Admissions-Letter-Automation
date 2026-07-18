@@ -27,7 +27,7 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Microsoft Entra bearer-token verification for production API access.
 - Role-guarded API routes for Admin, Admissions Supervisor, Counselor, and Viewer access.
 - Microsoft Graph `/me/sendMail` route that sends from the authenticated counselor mailbox.
-- Admin-managed shared SMTP sender option with AES-256-GCM encrypted password storage and a connection test.
+- Admin-managed shared SMTP sender option with AES-256-GCM encrypted password storage and a test email sent back to the configured mailbox.
 - Archive, restore, and Admin-only permanent clearing of completed import batches and their stored files.
 - Recent email activity view with recipient, status, resend reason, sent time, and errors.
 - Duplicate-send prevention unless a resend reason is supplied.
