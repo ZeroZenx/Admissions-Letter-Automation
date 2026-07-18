@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { audit } from "@/lib/audit";
 import { HttpError, requireAuth } from "@/lib/auth";
-import { getAuthEnv } from "@/lib/env";
 import { handleApiError } from "@/lib/http";
 import { uploadLimits } from "@/lib/request-limits";
 import { getAppSettings } from "@/lib/settings";
@@ -28,7 +27,7 @@ export async function POST(request: Request) {
 
     const settings = await getAppSettings();
     const graphAccessToken = request.headers.get("x-graph-access-token") ?? user.accessToken;
-    if (settings.email.provider === "graph" && getAuthEnv().AUTH_MODE !== "development" && !graphAccessToken) {
+    if (settings.email.provider === "graph" && !graphAccessToken) {
       throw new HttpError(401, "Microsoft Graph email sending requires a delegated Graph bearer token.");
     }
 

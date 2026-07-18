@@ -33,6 +33,7 @@ test("email sending selects Graph or SMTP from managed settings", async () => {
   assert.match(sendSource, /settings\.email\.provider === "smtp"/);
   assert.match(sendSource, /sendSmtpMail\(await getStoredSmtpConfiguration\(\), mail\)/);
   assert.match(sendSource, /sendGraphMail\(\{ accessToken: graphAccessToken, \.\.\.mail \}\)/);
+  assert.doesNotMatch(sendSource, /AUTH_MODE|development/);
   assert.doesNotMatch(bulkSource, /sendSmtpMail|sendGraphMail|send-email/);
 });
 

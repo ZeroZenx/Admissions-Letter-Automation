@@ -4,7 +4,6 @@ import { audit } from "@/lib/audit";
 import { HttpError, requireAuth } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { letterDownloadFileName } from "@/lib/download-filenames";
-import { getAuthEnv } from "@/lib/env";
 import { sendGraphMail } from "@/lib/graph-mail";
 import { handleApiError } from "@/lib/http";
 import { uploadLimits, formatBytes } from "@/lib/request-limits";
@@ -27,10 +26,9 @@ export async function POST(request: Request) {
   try {
     const user = await requireAuth(request, ["Admin", "Admissions Supervisor", "Counselor"]);
     const dbUser = await ensureDbUser(user);
-    const authEnv = getAuthEnv();
     const settings = await getAppSettings();
     const graphAccessToken = request.headers.get("x-graph-access-token") ?? user.accessToken;
-    if (settings.email.provider === "graph" && authEnv.AUTH_MODE !== "development" && !graphAccessToken) {
+    if (settings.email.provider === "graph" && !graphAccessToken) {
       throw new HttpError(401, "Microsoft Graph email sending requires a delegated Graph bearer token.");
     }
 
@@ -166,22 +164,19 @@ export async function POST(request: Request) {
 
     try {
       await query("UPDATE applicants SET email_status = 'Sending', sent_date = null, error_message = null WHERE id = $1", [letter.applicant_id]);
-      if (authEnv.AUTH_MODE !== "development") {
-        const mail = {
-          recipient: letter.email,
-          subject: body.subject,
-          body: sanitizedBody,
-          attachmentName: letterDownloadFileName(letter.student_id, letter.template_type, "pdf"),
-          attachmentContent: pdf
-        };
-        if (settings.email.provider === "smtp") {
-          await sendSmtpMail(await getStoredSmtpConfiguration(), mail);
-        } else {
-          if (!graphAccessToken) throw new HttpError(401, "Microsoft Graph email sending requires a delegated Graph bearer token.");
-          await sendGraphMail({ accessToken: graphAccessToken, ...mail });
-        }
+      const mail = {
+        recipient: letter.email,
+        subject: body.subject,
+        body: sanitizedBody,
+        attachmentName: letterDownloadFileName(letter.student_id, letter.template_type, "pdf"),
+        attachmentContent: pdf
+      };
+      if (settings.email.provider === "smtp") {
+        await sendSmtpMail(await getStoredSmtpConfiguration(), mail);
+      } else {
+        if (!graphAccessToken) throw new HttpError(401, "Microsoft Graph email sending requires a delegated Graph bearer token.");
+        await sendGraphMail({ accessToken: graphAccessToken, ...mail });
       }
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown email send failure";
       await query("UPDATE email_logs SET status = 'failed', error_message = $1 WHERE id = $2", [errorMessage, emailLog.rows[0].id]);

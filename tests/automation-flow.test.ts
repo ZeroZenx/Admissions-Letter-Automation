@@ -486,9 +486,8 @@ test("email send route records oversized generated PDFs before sending", async (
 test("email send route does not mark delivered mail failed when sent audit logging fails", async () => {
   const source = await readFile("app/api/send-email/route.ts", "utf8");
 
-  assert.match(source, /const authEnv = getAuthEnv\(\)/);
-  assert.match(source, /authEnv\.AUTH_MODE !== "development" && !graphAccessToken/);
-  assert.match(source, /if \(authEnv\.AUTH_MODE !== "development"\)/);
+  assert.doesNotMatch(source, /AUTH_MODE|development/);
+  assert.match(source, /settings\.email\.provider === "graph" && !graphAccessToken/);
   assert.match(source, /import \{ letterDownloadFileName \} from "@\/lib\/download-filenames"/);
   assert.match(source, /a\.student_id, a\.template_type, a\.email/);
   assert.match(source, /UPDATE applicants SET email_status = 'Queued', sent_date = null, error_message = null WHERE id = \$1/);
@@ -509,15 +508,18 @@ test("email send route does not mark delivered mail failed when sent audit loggi
   assert.match(source, /throw error/);
 
   const graphSendIndex = source.indexOf("await sendGraphMail(");
+  const smtpSendIndex = source.indexOf("await sendSmtpMail(");
   const sentUpdateIndex = source.indexOf("UPDATE email_logs SET status = 'sent'");
   const queuedAuditIndex = source.indexOf('audit("email.queued"');
   const sendingUpdateIndex = source.indexOf("UPDATE applicants SET email_status = 'Sending'");
   const catchIndex = source.indexOf("} catch (error) {", graphSendIndex);
 
   assert.ok(graphSendIndex > -1);
+  assert.ok(smtpSendIndex > -1);
   assert.ok(queuedAuditIndex > -1);
   assert.ok(sendingUpdateIndex > queuedAuditIndex);
   assert.ok(sentUpdateIndex > graphSendIndex);
+  assert.ok(sentUpdateIndex > smtpSendIndex);
   assert.ok(catchIndex > graphSendIndex);
   assert.ok(sentUpdateIndex > catchIndex);
 });
