@@ -356,7 +356,6 @@ export function AppClient() {
     setMessage("");
     try {
       const autoGenerate = formData.get("autoGenerate") === "on";
-      const autoSend = formData.get("autoSend") === "on";
       const response = await authenticatedFetch("/api/import", { method: "POST", body: formData });
       const body = await readJson<{
         validRows?: number;
@@ -379,27 +378,27 @@ export function AppClient() {
           const missing = item.missingPlaceholderNames?.length ? ` (${item.missingPlaceholderNames.join(", ")})` : "";
           return `${item.templateType}: ${item.status}${missing}`;
         }).join(", ")}.`;
-      } else if ((autoGenerate || autoSend) && validApplicantIds.length > uploadLimits.bulkApplicantIds) {
-        importedMessage = `${importedMessage} Automation preflight blocked: ${validApplicantIds.length} valid rows exceed the ${uploadLimits.bulkApplicantIds} applicant batch limit. Filter or split the Banner export before running generation/email.`;
-      } else if ((autoGenerate || autoSend) && validApplicantIds.length) {
+      } else if (autoGenerate && validApplicantIds.length > uploadLimits.bulkApplicantIds) {
+        importedMessage = `${importedMessage} Automation preflight blocked: ${validApplicantIds.length} valid rows exceed the ${uploadLimits.bulkApplicantIds} applicant batch limit. Filter or split the Banner export before generating letters.`;
+      } else if (autoGenerate && validApplicantIds.length) {
         try {
-          const bulkFetch = autoSend && settings.email.provider === "graph" ? authenticatedGraphFetch : authenticatedFetch;
-          const generationResponse = await bulkFetch("/api/generate-bulk", {
+          const generationResponse = await authenticatedFetch("/api/generate-bulk", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              applicantIds: validApplicantIds,
-              sendEmail: autoSend,
-              subject: settings.email.defaultSubject,
-              body: settings.email.defaultBody
-            })
+            body: JSON.stringify({ applicantIds: validApplicantIds })
           });
-          const generationBody = await readJson<{ results?: Array<{ ok: boolean; generated?: boolean; emailed?: boolean }>; error?: string }>(generationResponse);
+          const generationBody = await readJson<{
+            results?: Array<{ ok: boolean; generated?: boolean; result?: { generatedLetterId?: string } }>;
+            error?: string;
+          }>(generationResponse);
           const failures = generationBody.results?.filter((result) => !result.ok).length ?? 0;
           const generated = generationBody.results?.filter((result) => result.generated).length ?? 0;
-          const emailed = generationBody.results?.filter((result) => result.emailed).length ?? 0;
+          const generatedLetterIds = generationBody.results
+            ?.map((result) => result.result?.generatedLetterId)
+            .filter((id): id is string => Boolean(id)) ?? [];
+          if (generationResponse.ok) setSelectedGeneratedLetters(generatedLetterIds);
           importedMessage = generationResponse.ok
-            ? `${importedMessage} Generated DOCX/PDF files for ${generated} records.${autoSend ? ` Sent ${emailed} emails.` : ""} ${failures} failed.`
+            ? `${importedMessage} Prepared DOCX/PDF files for ${generated} records. No emails were sent. Review the selected letters in Email Queue before sending. ${failures} failed.`
             : `${importedMessage} Automatic generation failed: ${generationBody.error ?? "unknown error"}.`;
         } catch (error) {
           importedMessage = `${importedMessage} Automatic generation failed: ${clientErrorMessage(error)}.`;
@@ -942,10 +941,9 @@ function UploadPage({ busy, onUpload }: { busy: boolean; onUpload: (formData: Fo
           <input name="file" type="file" accept=".xlsx" required />
         </div>
         <input name="autoGenerate" type="hidden" value="on" />
-        <input name="autoSend" type="hidden" value="on" />
-        <div className="automation-summary">Full automation: import, generate DOCX/PDF, send email, update status workbook.</div>
+        <div className="automation-summary">Preparation: import records, apply stored templates, generate DOCX/PDF files, and queue letters for review.</div>
         <button className="button" disabled={busy}>
-          <Upload size={16} /> Upload Source of Truth and Run Automation
+          <Upload size={16} /> Upload Source of Truth and Prepare Letters
         </button>
       </form>
     </Panel>

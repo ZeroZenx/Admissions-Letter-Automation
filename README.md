@@ -17,9 +17,9 @@ Internal Next.js application for importing Banner admissions exports, managing W
 - Generate completed DOCX files while preserving the original DOCX package formatting.
 - Convert generated DOCX files to PDF through LibreOffice/`soffice` when available.
 - Optionally generate DOCX/PDF files automatically for valid rows immediately after upload.
-- One-click upload runs full automation for valid rows: import, generate DOCX/PDF files, send generated PDFs through the selected email provider, and update operational status fields.
-- Upload automation preflights required `TemplateType` templates and exact placeholder mappings before generating or sending.
-- One-click upload blocks oversized generation/email batches before calling automation.
+- One-click upload prepares all valid rows: import, select the stored template, generate DOCX/PDF files, update operational fields, and preselect the letters in Email Queue. Upload never sends email automatically.
+- Upload automation preflights required `TemplateType` templates and exact placeholder mappings before generating letters.
+- One-click upload blocks oversized generation batches before calling automation.
 - Manual selected-letter generation uses the same applicant batch limit before calling automation.
 - Preview/download generated DOCX/PDF files and download a bulk ZIP.
 - Audit individual and bulk generated-letter downloads by generated-letter ID.
@@ -138,7 +138,7 @@ See [docs/production-readiness.md](docs/production-readiness.md) for the deploym
 - A fresh deployment includes active mappings for `ACKNOWLEDGEMENT`, `DFTEMPLATE`, `CFULFILLED_NOGATE`, `CONDOFFER_CSEC_PT`, `CONDOFFER_NURSING`, and `UOFFER`.
 - Admissions staff can review source-truth email status, sent date, generated file names, error message, processing flag, and selected template per applicant.
 - Generation failures are written back to applicant error fields and generated-letter failure status.
-- Email sending can be run as a multi-select batch from the Email Queue or automatically on upload for a full import/generate/send batch. Manually generated letters are carried into the Email Queue selection.
+- Email sending runs only as a deliberate multi-select batch from the Email Queue. Uploaded or manually generated letters are carried into the Email Queue selection but are never sent automatically.
 - Duplicate sends are blocked unless an authorized user supplies a resend reason.
 - Pending email sends older than the configured stale-send timeout are marked failed before staff can retry.
 - Email send history is visible in the Email Queue without exposing stored email bodies.

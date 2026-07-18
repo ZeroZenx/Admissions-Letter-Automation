@@ -92,14 +92,14 @@ Use this checklist before enabling COSTAATT staff access.
 - Confirm imported `EmailStatus` values are limited to supported statuses, `Sent` rows include `SentDate`, and `Failed` rows include `ErrorMessage`.
 - Confirm the dashboard Import Review panel shows uploaded file, worksheet, status, valid/invalid row counts, uploader, and row-level errors.
 - Confirm imported applicant records show `EmailStatus`, `SentDate`, `WordFileName`, `PDFFileName`, `ErrorMessage`, `ProcessedByFlow`, and `TemplateType`.
-- Confirm one-click upload runs full automation for valid rows: import, DOCX/PDF generation, selected-provider email send, and applicant status updates.
+- Confirm one-click upload prepares valid rows: import, stored-template merge, DOCX/PDF generation, applicant status updates, and Email Queue selection. Confirm it does not send email.
 - Confirm upload automation is blocked with a clear preflight message when a required `TemplateType` is missing, inactive, or has unmapped placeholders.
 - Confirm one-click upload is blocked with a clear preflight message when valid rows exceed the applicant batch limit.
 - Confirm manual selected-letter generation is blocked with a clear message when selected rows exceed the applicant batch limit.
 - Confirm missing stored template files block generation with a clear re-upload message and applicant `ErrorMessage`.
 - Confirm generation failures write applicant `ErrorMessage` values and failed generated-letter statuses.
 - Confirm missing generated DOCX files block PDF conversion with a clear regenerate message and failed generated-letter status.
-- Confirm the upload send option uses the sender selected in Settings, updates email status/sent dates, and records provider, sender address, and row-level errors.
+- Confirm email is sent only after an operator selects prepared PDFs in Email Queue and presses the batch-send button.
 - Archive a controlled import and confirm it disappears from active records, letters, email history, and exports; restore it; then archive and permanently clear only the controlled batch as an Admin.
 - Confirm email attempts move applicant status through queued/sending/sent or failed without marking Graph-accepted mail as failed because of later audit issues.
 - Confirm missing generated PDF files block email sending with a clear applicant `ErrorMessage` and audit entry.

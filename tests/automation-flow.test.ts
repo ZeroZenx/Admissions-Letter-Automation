@@ -242,14 +242,15 @@ test("upload UI offers automatic document generation and displays operational co
   assert.match(source, /blockedTemplates\.length/);
   assert.match(source, /missingPlaceholderNames/);
   assert.match(source, /name="autoGenerate"/);
-  assert.match(source, /name="autoSend"/);
   assert.match(source, /<input name="autoGenerate" type="hidden" value="on" \/>/);
-  assert.match(source, /<input name="autoSend" type="hidden" value="on" \/>/);
+  assert.doesNotMatch(source, /name="autoSend"/);
   assert.match(source, /validApplicantIds\.length > uploadLimits\.bulkApplicantIds/);
   assert.match(source, /exceed the \$\{uploadLimits\.bulkApplicantIds\} applicant batch limit/);
-  assert.match(source, /Filter or split the Banner export before running generation\/email/);
-  assert.match(source, /Full automation: import, generate DOCX\/PDF, send email, update status workbook\./);
-  assert.match(source, /Upload Source of Truth and Run Automation/);
+  assert.match(source, /Filter or split the Banner export before generating letters/);
+  assert.match(source, /Preparation: import records, apply stored templates, generate DOCX\/PDF files, and queue letters for review\./);
+  assert.match(source, /Upload Source of Truth and Prepare Letters/);
+  assert.match(source, /No emails were sent\. Review the selected letters in Email Queue before sending\./);
+  assert.doesNotMatch(source, /sendEmail: autoSend/);
   assert.match(source, /Automation ready/);
   assert.match(source, /Import, generate, email, and track admissions letters from Banner source data\./);
   assert.doesNotMatch(source, /Review required/);
@@ -262,14 +263,14 @@ test("upload UI offers automatic document generation and displays operational co
   assert.match(source, /ProcessedByFlow/);
 });
 
-test("operator docs describe one-click source-of-truth automation", async () => {
+test("operator docs describe upload preparation without automatic email sending", async () => {
   const readme = await readFile("README.md", "utf8");
   const checklist = await readFile("docs/production-readiness.md", "utf8");
 
-  assert.match(readme, /One-click upload runs full automation/);
-  assert.match(readme, /import, generate DOCX\/PDF files, send generated PDFs through the selected email provider/);
-  assert.match(checklist, /Confirm one-click upload runs full automation/);
-  assert.match(checklist, /selected-provider email send/);
+  assert.match(readme, /One-click upload prepares all valid rows/);
+  assert.match(readme, /never sends email automatically/);
+  assert.match(checklist, /Confirm one-click upload prepares valid rows/);
+  assert.match(checklist, /does not send email/);
 });
 
 test("upload automation failures release busy state and report an error", async () => {
@@ -292,7 +293,7 @@ test("manual bulk generation blocks oversized selections before calling the API"
   assert.match(source, /Clear the selection or split the batch before generating letters/);
 
   const limitCheckIndex = source.indexOf("selectedApplicants.length > uploadLimits.bulkApplicantIds");
-  const apiCallIndex = source.indexOf('authenticatedFetch("/api/generate-bulk"');
+  const apiCallIndex = source.indexOf('authenticatedFetch("/api/generate-bulk"', limitCheckIndex);
   assert.ok(limitCheckIndex > -1);
   assert.ok(apiCallIndex > limitCheckIndex);
 });
