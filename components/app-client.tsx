@@ -393,12 +393,9 @@ export function AppClient() {
           }>(generationResponse);
           const failures = generationBody.results?.filter((result) => !result.ok).length ?? 0;
           const generated = generationBody.results?.filter((result) => result.generated).length ?? 0;
-          const generatedLetterIds = generationBody.results
-            ?.map((result) => result.result?.generatedLetterId)
-            .filter((id): id is string => Boolean(id)) ?? [];
-          if (generationResponse.ok) setSelectedGeneratedLetters(generatedLetterIds);
+          if (generationResponse.ok) setSelectedGeneratedLetters([]);
           importedMessage = generationResponse.ok
-            ? `${importedMessage} Prepared DOCX/PDF files for ${generated} records. No emails were sent. Review the selected letters in Email Queue before sending. ${failures} failed.`
+            ? `${importedMessage} Prepared DOCX/PDF files for ${generated} records. No emails were sent. Review the letters under Generate Letters, then open Email Queue and select recipients manually. ${failures} failed.`
             : `${importedMessage} Automatic generation failed: ${generationBody.error ?? "unknown error"}.`;
         } catch (error) {
           importedMessage = `${importedMessage} Automatic generation failed: ${clientErrorMessage(error)}.`;
@@ -492,16 +489,11 @@ export function AppClient() {
         error?: string;
       }>(response);
       const failures = body.results?.filter((result: { ok: boolean }) => !result.ok).length ?? 0;
-      const generatedLetterIds = body.results
-        ?.map((result) => result.result?.generatedLetterId)
-        .filter((id): id is string => Boolean(id)) ?? [];
-      if (response.ok && generatedLetterIds.length) {
-        setSelectedGeneratedLetters(generatedLetterIds);
-        setActive("email");
-      }
+      const generatedCount = body.results?.filter((result) => result.generated).length ?? 0;
+      if (response.ok) setSelectedGeneratedLetters([]);
       setMessage(
         response.ok
-          ? `Generated ${generatedLetterIds.length} letter${generatedLetterIds.length === 1 ? "" : "s"}. They are selected in Email Queue. ${failures} failed.`
+          ? `Generated ${generatedCount} letter${generatedCount === 1 ? "" : "s"}. Review the PDFs below, then open Email Queue and select recipients manually. ${failures} failed.`
           : body.error ?? "Generation failed."
       );
       await refresh();
@@ -941,7 +933,7 @@ function UploadPage({ busy, onUpload }: { busy: boolean; onUpload: (formData: Fo
           <input name="file" type="file" accept=".xlsx" required />
         </div>
         <input name="autoGenerate" type="hidden" value="on" />
-        <div className="automation-summary">Preparation: import records, apply stored templates, generate DOCX/PDF files, and queue letters for review.</div>
+        <div className="automation-summary">Preparation: import records, apply stored templates, and generate DOCX/PDF files for staff review.</div>
         <button className="button" disabled={busy}>
           <Upload size={16} /> Upload Source of Truth and Prepare Letters
         </button>

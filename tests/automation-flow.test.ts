@@ -247,9 +247,9 @@ test("upload UI offers automatic document generation and displays operational co
   assert.match(source, /validApplicantIds\.length > uploadLimits\.bulkApplicantIds/);
   assert.match(source, /exceed the \$\{uploadLimits\.bulkApplicantIds\} applicant batch limit/);
   assert.match(source, /Filter or split the Banner export before generating letters/);
-  assert.match(source, /Preparation: import records, apply stored templates, generate DOCX\/PDF files, and queue letters for review\./);
+  assert.match(source, /Preparation: import records, apply stored templates, and generate DOCX\/PDF files for staff review\./);
   assert.match(source, /Upload Source of Truth and Prepare Letters/);
-  assert.match(source, /No emails were sent\. Review the selected letters in Email Queue before sending\./);
+  assert.match(source, /No emails were sent\. Review the letters under Generate Letters, then open Email Queue and select recipients manually\./);
   assert.doesNotMatch(source, /sendEmail: autoSend/);
   assert.match(source, /Automation ready/);
   assert.match(source, /Import, generate, email, and track admissions letters from Banner source data\./);
@@ -268,9 +268,9 @@ test("operator docs describe upload preparation without automatic email sending"
   const checklist = await readFile("docs/production-readiness.md", "utf8");
 
   assert.match(readme, /One-click upload prepares all valid rows/);
-  assert.match(readme, /never sends email automatically/);
+  assert.match(readme, /never sends email or selects recipients automatically/);
   assert.match(checklist, /Confirm one-click upload prepares valid rows/);
-  assert.match(checklist, /does not send email/);
+  assert.match(checklist, /neither sends email nor selects recipients/);
 });
 
 test("upload automation failures release busy state and report an error", async () => {
@@ -328,8 +328,10 @@ test("email queue sends selected generated PDFs as a bounded batch", async () =>
   assert.match(routeSource, /sentCount/);
   assert.match(routeSource, /failedCount/);
 
-  assert.match(clientSource, /setSelectedGeneratedLetters\(generatedLetterIds\)/);
-  assert.match(clientSource, /setActive\("email"\)/);
+  assert.match(clientSource, /const \[selectedGeneratedLetters, setSelectedGeneratedLetters\] = useState<string\[\]>\(\[\]\)/);
+  assert.match(clientSource, /if \(generationResponse\.ok\) setSelectedGeneratedLetters\(\[\]\)/);
+  assert.match(clientSource, /if \(response\.ok\) setSelectedGeneratedLetters\(\[\]\)/);
+  assert.doesNotMatch(clientSource, /setActive\("email"\)/);
   assert.match(clientSource, /authenticatedGraphFetch : authenticatedFetch/);
   assert.match(clientSource, /"\/api\/send-email\/bulk"/);
   assert.match(clientSource, /Send \{selected\.length \|\| ""\} Selected Email/);
@@ -338,26 +340,21 @@ test("email queue sends selected generated PDFs as a bounded batch", async () =>
   assert.match(clientSource, /onSelected\(selected\.filter\(\(id\) => !sentIds\.includes\(id\)\)\)/);
 });
 
-test("bulk generation can send generated PDFs and persist row-level failures", async () => {
+test("bulk generation is generation-only and cannot send email", async () => {
   const source = await readFile("app/api/generate-bulk/route.ts", "utf8");
 
   assert.match(source, /applicantIds: z\.array\(z\.string\(\)\.uuid\(\)\)\.min\(1\)\.max\(uploadLimits\.bulkApplicantIds\)/);
-  assert.match(source, /sendEmail: z\.boolean\(\)\.default\(false\)/);
+  assert.match(source, /\}\)\.strict\(\)/);
   assert.match(source, /hasDuplicateApplicantIds\(body\.applicantIds\)/);
   assert.match(source, /Bulk automation applicantIds must be unique\./);
-  assert.match(source, /const authEnv = getAuthEnv\(\)/);
-  assert.match(source, /x-graph-access-token/);
-  assert.match(source, /authEnv\.AUTH_MODE !== "development" && !graphAccessToken/);
-  assert.match(source, /Microsoft Graph token is required when sendEmail is true/);
-  assert.match(source, /\/api\/send-email/);
+  assert.doesNotMatch(source, /sendEmail/);
+  assert.doesNotMatch(source, /\/api\/send-email/);
+  assert.doesNotMatch(source, /x-graph-access-token/);
   assert.match(source, /generationResult = await readResponseJson\(response\)/);
-  assert.match(source, /result: await readResponseJson\(emailResponse\)/);
   assert.match(source, /UPDATE applicants SET error_message = \$1, processed_by_flow = false WHERE id = \$2/);
-  assert.match(source, /UPDATE applicants SET email_status = 'Failed', error_message = \$1 WHERE id = \$2/);
   assert.match(source, /batch\.generated/);
   assert.match(source, /requestedCount/);
   assert.match(source, /generatedCount/);
-  assert.match(source, /emailedCount/);
   assert.match(source, /failedCount/);
 
   const duplicateCheckIndex = source.indexOf("hasDuplicateApplicantIds(body.applicantIds)");
@@ -396,7 +393,7 @@ test("bulk generation keeps row-level failures when internal APIs return non-jso
   assert.match(source, /async function readResponseJson\(response: Response\)/);
   assert.match(source, /try \{\n\s+return normalizeInternalResponse\(await response\.json\(\)\);/);
   assert.match(source, /catch \{\n\s+return \{ error: boundedErrorMessage\(`\$\{response\.status\} \$\{response\.statusText \|\| "Non-JSON response"\}`\) \};/);
-  assert.match(source, /const errorMessage = readError\(failure\)/);
+  assert.match(source, /const errorMessage = readError\(generationResult\)/);
 });
 
 test("bulk generation keeps row-level failures when internal API calls throw", async () => {
@@ -405,8 +402,8 @@ test("bulk generation keeps row-level failures when internal API calls throw", a
   assert.match(source, /let generated = false/);
   assert.match(source, /let generationResult: unknown = null/);
   assert.match(source, /catch \(error\) \{\n\s+generationResult = \{ error: clientErrorMessage\(error\) \};/);
-  assert.match(source, /catch \(error\) \{\n\s+emailResult = \{ ok: false, result: \{ error: clientErrorMessage\(error\) \} \};/);
-  assert.match(source, /ok: generated && \(!emailResult \|\| emailResult\.ok\)/);
+  assert.doesNotMatch(source, /emailResult/);
+  assert.match(source, /ok: generated/);
   assert.match(source, /generated,/);
   assert.match(source, /function clientErrorMessage\(error: unknown\)/);
 });

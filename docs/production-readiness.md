@@ -92,7 +92,7 @@ Use this checklist before enabling COSTAATT staff access.
 - Confirm imported `EmailStatus` values are limited to supported statuses, `Sent` rows include `SentDate`, and `Failed` rows include `ErrorMessage`.
 - Confirm the dashboard Import Review panel shows uploaded file, worksheet, status, valid/invalid row counts, uploader, and row-level errors.
 - Confirm imported applicant records show `EmailStatus`, `SentDate`, `WordFileName`, `PDFFileName`, `ErrorMessage`, `ProcessedByFlow`, and `TemplateType`.
-- Confirm one-click upload prepares valid rows: import, stored-template merge, DOCX/PDF generation, applicant status updates, and Email Queue selection. Confirm it does not send email.
+- Confirm one-click upload prepares valid rows: import, stored-template merge, DOCX/PDF generation, and applicant status updates. Confirm it neither sends email nor selects recipients.
 - Confirm upload automation is blocked with a clear preflight message when a required `TemplateType` is missing, inactive, or has unmapped placeholders.
 - Confirm one-click upload is blocked with a clear preflight message when valid rows exceed the applicant batch limit.
 - Confirm manual selected-letter generation is blocked with a clear message when selected rows exceed the applicant batch limit.
@@ -100,11 +100,12 @@ Use this checklist before enabling COSTAATT staff access.
 - Confirm generation failures write applicant `ErrorMessage` values and failed generated-letter statuses.
 - Confirm missing generated DOCX files block PDF conversion with a clear regenerate message and failed generated-letter status.
 - Confirm email is sent only after an operator selects prepared PDFs in Email Queue and presses the batch-send button.
+- Confirm Generate Letters supports PDF preview/review and does not navigate to Email Queue or preselect recipients.
 - Archive a controlled import and confirm it disappears from active records, letters, email history, and exports; restore it; then archive and permanently clear only the controlled batch as an Admin.
 - Confirm email attempts move applicant status through queued/sending/sent or failed without marking Graph-accepted mail as failed because of later audit issues.
 - Confirm missing generated PDF files block email sending with a clear applicant `ErrorMessage` and audit entry.
 - Confirm stale pending email sends older than the configured timeout are marked failed, audited, and reflected on the applicant row before retry.
-- Confirm each batch automation run creates a `batch.generated` audit entry with requested, generated, emailed, and failed counts.
+- Confirm each generation batch creates a `batch.generated` audit entry with requested, generated, and failed counts.
 - If counselor ownership is used, set `applicants.counselor_user_id`; counselors can access unassigned applicants and applicants assigned to their user record, while Admin and Admissions Supervisor roles can access all records.
 - Confirm Banner exports uploaded by a Counselor account are automatically assigned to that counselor through `applicants.counselor_user_id`.
 - Generate sample letters for each `TemplateType`.
